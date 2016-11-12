@@ -1,2 +1,4 @@
 Cargo.lock
+bin/mkpod.sh
+dist/
 target/
