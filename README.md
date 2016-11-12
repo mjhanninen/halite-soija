@@ -17,9 +17,10 @@ pack is available on [Halite download page][halite-download] or from the
 [MIT License][mit]
 
 The modifications to the original starter packagelicensed under the
-[GNU General Public License, version 3][gpl3] or any later version.
+[GNU General Public License, version 3][gpl3] or (at your option) any later
+version.
 
-[halite-download]: https://halite.io/downloads.php/
+[halite-download]: https://halite.io/downloads.php
 
 [halite-github]: https://github.com/HaliteChallenge/Halite
 
