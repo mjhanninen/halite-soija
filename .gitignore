@@ -1,8 +1,11 @@
 Cargo.lock
-bin/mkpod.sh
-dist/
-target/
-tmp/
+/dist/
+/target/
+/tmp/
 
 # Backup files from running `cargo fmt`
 *.bk
+
+# Halite recordings
+*.hlt
+/rec/
