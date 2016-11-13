@@ -1,0 +1,20 @@
+# It is easier to fit three panes 80 char wide consoles on single 15" screen.
+max_width = 80
+ideal_width = 72
+tab_spaces = 4
+
+# Just to save the byte.
+newline_style = "Unix"
+
+# Committed FIXMEs never get fixed.
+report_todo = "Always"
+report_fixme = "Always"
+
+# We use different comment styles for different purposes.
+normalise_comments = false
+
+# No backups needed; that's why we use Git.
+write_mode = "Overwrite"
+
+# In some places `try!` still trumps.
+use_try_shorthand = false

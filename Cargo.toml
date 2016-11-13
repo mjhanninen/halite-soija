@@ -1,7 +1,10 @@
 [package]
-name = "Rust"
+name = "UmpteenthAnion"
 version = "0.1.0"
-authors = ["Benjamin Spector <benjaminfspector@gmail.com>"]
+authors = [
+    "Benjamin Spector <benjaminfspector@gmail.com>",
+    "Matti Hänninen <matti@mjhanninen.com>"
+]
 
 publish = false
 vcs = "None"

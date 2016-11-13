@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::str::FromStr;
 
-//Persistant between moves, that way if the user screws up the map it won't persist.
+// Persistant between moves, that way if the user screws up the map it won't
+// persist.
 static mut _width: u16 = 0;
 static mut _height: u16 = 0;
 
@@ -28,16 +29,24 @@ fn deserialize_map_size(s: String) -> () {
 
 fn deserialize_productions(s: String) -> types::GameMap {
     let splt: Vec<&str> = s.split(" ").collect();
-    let mut gmp = types::GameMap { width: 0, height: 0, contents: Vec::new() };
+    let mut gmp = types::GameMap {
+        width: 0,
+        height: 0,
+        contents: Vec::new(),
+    };
     unsafe {
         gmp.width = _width;
-        gmp.height= _height;
+        gmp.height = _height;
     }
     gmp.contents.resize(gmp.height as usize, Vec::new());
     let mut loc = 0;
     for v in &mut gmp.contents {
         for x in 0..gmp.width {
-            v.push(types::Site { owner: 0, strength: 0, production: u8::from_str(splt[loc]).unwrap() });
+            v.push(types::Site {
+                owner: 0,
+                strength: 0,
+                production: u8::from_str(splt[loc]).unwrap(),
+            });
             loc += 1;
         }
     }
@@ -58,13 +67,15 @@ fn deserialize_map(s: String, gmp: &mut types::GameMap) -> () {
                     owner = u8::from_str(splt[loc]).unwrap();
                     loc += 1;
                 }
-                gmp.get_site(types::Location { x: b, y: a }, types::STILL).owner = owner;
+                gmp.get_site(types::Location { x: b, y: a }, types::STILL)
+                    .owner = owner;
                 counter -= 1;
             }
         }
         for a in 0.._height {
             for b in 0.._width {
-                gmp.get_site(types::Location { x: b, y: a }, types::STILL).strength = u8::from_str(splt[loc]).unwrap();
+                gmp.get_site(types::Location { x: b, y: a }, types::STILL)
+                    .strength = u8::from_str(splt[loc]).unwrap();
                 loc += 1;
             }
         }

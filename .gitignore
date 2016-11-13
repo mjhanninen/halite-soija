@@ -3,3 +3,6 @@ bin/mkpod.sh
 dist/
 target/
 tmp/
+
+# Backup files from running `cargo fmt`
+*.bk
