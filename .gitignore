@@ -9,3 +9,6 @@ Cargo.lock
 # Halite recordings
 *.hlt
 /rec/
+
+# OS X turds
+.DS_Store
