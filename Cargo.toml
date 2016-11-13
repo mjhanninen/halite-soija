@@ -5,9 +5,7 @@ authors = [
     "Benjamin Spector <benjaminfspector@gmail.com>",
     "Matti Hänninen <matti@mjhanninen.com>"
 ]
-
 publish = false
-vcs = "None"
 
 [dependencies]
 rand = "*"
