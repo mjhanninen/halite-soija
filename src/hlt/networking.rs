@@ -1,15 +1,11 @@
-#![allow(warnings)]
-
 use hlt::types;
-use std::io;
 use std::collections::HashMap;
-use std::io::Write;
 use std::str::FromStr;
 
 // Persistant between moves, that way if the user screws up the map it won't
 // persist.
-static mut _width: u16 = 0;
-static mut _height: u16 = 0;
+static mut WIDTH: u16 = 0;
+static mut HEIGHT: u16 = 0;
 
 fn serialize_move_set(moves: HashMap<types::Location, u8>) -> String {
     let mut s: String = String::new();
@@ -22,8 +18,8 @@ fn serialize_move_set(moves: HashMap<types::Location, u8>) -> String {
 fn deserialize_map_size(s: String) -> () {
     let splt: Vec<&str> = s.split(" ").collect();
     unsafe {
-        _width = u16::from_str(splt[0]).unwrap();
-        _height = u16::from_str(splt[1]).unwrap();
+        WIDTH = u16::from_str(splt[0]).unwrap();
+        HEIGHT = u16::from_str(splt[1]).unwrap();
     }
 }
 
@@ -35,13 +31,13 @@ fn deserialize_productions(s: String) -> types::GameMap {
         contents: Vec::new(),
     };
     unsafe {
-        gmp.width = _width;
-        gmp.height = _height;
+        gmp.width = WIDTH;
+        gmp.height = HEIGHT;
     }
     gmp.contents.resize(gmp.height as usize, Vec::new());
     let mut loc = 0;
     for v in &mut gmp.contents {
-        for x in 0..gmp.width {
+        for _x in 0..gmp.width {
             v.push(types::Site {
                 owner: 0,
                 strength: 0,
@@ -59,22 +55,24 @@ fn deserialize_map(s: String, gmp: &mut types::GameMap) -> () {
         let mut counter = 0;
         let mut owner = 0;
         let mut loc: usize = 0;
-        for a in 0.._height {
-            for b in 0.._width {
+        for a in 0..HEIGHT {
+            for b in 0..WIDTH {
                 if counter == 0 {
                     counter = u16::from_str(splt[loc]).unwrap();
                     loc += 1;
                     owner = u8::from_str(splt[loc]).unwrap();
                     loc += 1;
                 }
-                gmp.get_site(types::Location { x: b, y: a }, types::STILL)
+                gmp.get_site_mut(types::Location { x: b, y: a },
+                                  types::STILL)
                     .owner = owner;
                 counter -= 1;
             }
         }
-        for a in 0.._height {
-            for b in 0.._width {
-                gmp.get_site(types::Location { x: b, y: a }, types::STILL)
+        for a in 0..HEIGHT {
+            for b in 0..WIDTH {
+                gmp.get_site_mut(types::Location { x: b, y: a },
+                                  types::STILL)
                     .strength = u8::from_str(splt[loc]).unwrap();
                 loc += 1;
             }
@@ -85,7 +83,6 @@ fn deserialize_map(s: String, gmp: &mut types::GameMap) -> () {
 
 fn send_string(s: String) -> () {
     println!("{}", s);
-    io::stdout().flush();
 }
 
 fn get_string() -> String {
