@@ -1,4 +1,4 @@
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Pos {
     pub x: i16,
     pub y: i16,
@@ -129,6 +129,14 @@ impl Space {
     pub fn with_dims(w: i16, h: i16) -> Self {
         assert!(w > 0 && h > 0);
         Space { w: w, h: h }
+    }
+
+    #[inline]
+    pub fn normalize(&self, p: &Pos) -> Pos {
+        Pos {
+            x: modulo(p.x, self.w),
+            y: modulo(p.y, self.h),
+        }
     }
 
     #[inline]
