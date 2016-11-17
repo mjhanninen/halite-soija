@@ -97,9 +97,11 @@ impl Connection {
                     .map_err(|_| self.parse_err("bad player tag"))?;
             }
             cell.tag = tag;
+            run_length -= 1;
         }
         if run_length != 0 {
-            return Err(self.parse_err("non-zero residual run-length"));
+            return Err(self.parse_err(
+                &format!("non-zero ({}) residual run-length", run_length)));
         }
         // Strengths
         for cell in state.occupation_map.iter_mut() {
