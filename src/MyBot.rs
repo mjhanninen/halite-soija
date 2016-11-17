@@ -1,4 +1,6 @@
-#![allow(non_snake_case)]
+// This line helps Emacs not to mix the following attributes with shebang.
+
+#![not(non_snake_case)]
 #![allow(dead_code)]
 
 extern crate rand;
@@ -9,7 +11,7 @@ extern crate text_io;
 mod hlt;
 mod ua;
 
-use std::collections::{HashSet,HashMap};
+use std::collections::{HashSet, HashMap};
 
 use hlt::networking;
 use hlt::types::Location;
@@ -17,7 +19,8 @@ use ua::map::{Map, Site};
 use ua::space::{Pos, Dir, Space};
 
 fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos> {
-    map.space.sweep()
+    map.space
+        .sweep()
         .filter_map(|pos| {
             let site = map.site(&pos);
             if site.owner == who {
@@ -42,9 +45,11 @@ impl<'a> Onion<'a> {
     pub fn from_set(space: &'a Space, seed: &HashSet<Pos>) -> Self {
         Onion {
             body: seed.clone(),
-            edge: seed.iter().map(|p| (p.clone(), Vec::new())).collect::<HashMap<_, _>>(),
+            edge: seed.iter()
+                .map(|p| (p.clone(), Vec::new()))
+                .collect::<HashMap<_, _>>(),
             generation: 0,
-            space: space
+            space: space,
         }
     }
 
@@ -57,7 +62,7 @@ impl<'a> Onion<'a> {
                     match next_edge.entry(n) {
                         Entry::Occupied(value) => {
                             value.into_mut().push(p.clone());
-                        },
+                        }
                         Entry::Vacant(value) => {
                             value.insert(vec![p.clone()]);
                         }
