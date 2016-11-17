@@ -1,6 +1,6 @@
 // This line helps Emacs not to mix the following attributes with shebang.
 
-#![not(non_snake_case)]
+#![allow(non_snake_case)]
 #![allow(dead_code)]
 
 extern crate rand;
@@ -8,15 +8,14 @@ extern crate rand;
 #[macro_use]
 extern crate text_io;
 
-mod hlt;
 mod ua;
 
 use std::collections::{HashSet, HashMap};
 
-use hlt::networking;
-use hlt::types::Location;
 use ua::map::{Map, Site};
 use ua::space::{Pos, Dir, Space};
+use ua::io;
+use ua::world::{State};
 
 fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos> {
     map.space
@@ -97,30 +96,66 @@ fn tick_site(pos: &Pos, src: &Site, map: &Map, me: u8) -> Option<Dir> {
     None
 }
 
-fn tick(map: &Map, me: u8) -> HashMap<Location, u8> {
-    let occupations = calc_occupations(map, me);
-    let gen0 = Onion::from_set(&map.space, &occupations);
-    let gen1 = gen0.expand();
+fn tick(map: &Map, me: u8) -> HashMap<Pos, Dir> {
+    // let occupations = calc_occupations(map, me);
+    // let gen0 = Onion::from_set(&map.space, &occupations);
+    // let gen1 = gen0.expand();
     let mut moves = HashMap::new();
     for p in map.space.sweep() {
         let source = map.site(&p);
         if source.owner == me {
-            let loc = p.to_hlt_location();
             if let Some(dir) = tick_site(&p, source, map, me) {
-                moves.insert(loc, dir.to_code());
+                moves.insert(p, dir);
             }
         }
     }
     moves
 }
 
+use std::fmt::Debug;
+use std::io::Write;
+use std::fs::File;
+
+trait LoggedUnwrap<T> {
+    fn unwrap_or_log(self, log: &mut Write) -> T;
+}
+
+impl<T, E> LoggedUnwrap<T> for Result<T, E>
+    where E: Debug
+{
+    fn unwrap_or_log(self, log: &mut Write) -> T {
+        match self {
+            Ok(v) => v,
+            Err(e) => {
+                if write!(log, "unwrapping due to: {:?}\n", e).is_ok() {
+                    log.flush().unwrap();
+                }
+                panic!();
+            }
+        }
+    }
+}
+
 fn main() {
-    let (me, mut game_map) = networking::get_init();
-    networking::send_init(format!("UmpteenthAnion_{}", me.to_string()));
+    let mut log_file = File::create("runtime.log").unwrap();
+    let mut connection = io::Connection::new();
+    let environment = connection.recv_environment()
+        .unwrap_or_log(&mut log_file);
+    let mut state_frame = State::for_environment(&environment);
+    connection.recv_state(&environment, &mut state_frame)
+        .unwrap_or_log(&mut log_file);
+    // You've got 15 seconds to spare on this line. Use it well.
+    connection.send_ready(&environment, "UmpteenthAnion")
+        .unwrap_or_log(&mut log_file);
     loop {
-        networking::get_frame(&mut game_map);
-        let map = Map::from_hlt_game_map(&game_map);
-        let moves = tick(&map, me);
-        networking::send_frame(moves);
+        connection.recv_state(&environment, &mut state_frame)
+            .unwrap_or_log(&mut log_file);
+        let map = Map::from_world(&environment, &state_frame);
+        let moves = tick(&map, environment.my_tag)
+            .iter()
+            .map(|(pos, dir)| (pos.to_world(), dir.to_world()))
+            .collect::<Vec<_>>();
+        connection.send_moves(moves.iter())
+            .unwrap_or_log(&mut log_file);
     }
 }

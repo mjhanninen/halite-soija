@@ -1,36 +1,38 @@
-use hlt::types;
-use ua::space::{Space, Pos};
-use ua::map::{Map, Site};
+use ua::space::{Space, Pos, Dir};
+use ua::map::{Map};
+use ua::world;
 
-impl Pos {
+impl Dir {
     #[inline]
-    pub fn to_hlt_location(&self) -> types::Location {
-        types::Location {
-            x: self.x as u16,
-            y: self.y as u16,
+    pub fn to_world(&self) -> world::Dir {
+        match *self {
+            Dir::North => world::Dir::North,
+            Dir::East => world::Dir::East,
+            Dir::South => world::Dir::South,
+            Dir::West => world::Dir::West,
         }
     }
 }
 
-impl Site {
+impl Pos {
     #[inline]
-    pub fn from_hlt_site(&mut self, hlt_site: &types::Site) {
-        self.owner = hlt_site.owner;
-        self.strength = hlt_site.strength;
-        self.production = hlt_site.production;
+    pub fn to_world(&self) -> world::Pos {
+        (self.x, self.y)
     }
 }
 
 impl Map {
-    pub fn from_hlt_game_map(hlt_game_map: &types::GameMap) -> Map {
-        let w = hlt_game_map.width;
-        let h = hlt_game_map.height;
+    pub fn from_world(environment: &world::Environment,
+                      state: &world::State) -> Map {
+        let w = environment.space.width;
+        let h = environment.space.height;
         let space = Space::with_dims(w as i16, h as i16);
         let mut map = Map::from_space(space);
-        for p in map.space.sweep() {
-            map.sites[map.space.ix(&p)]
-                .from_hlt_site(hlt_game_map.get_site(p.to_hlt_location(),
-                                                     types::STILL));
+        for i in 0..map.sites.len() {
+            let site = &mut map.sites[i];
+            site.owner = state.occupation_map[i].tag;
+            site.strength = state.occupation_map[i].strength as u8;
+            site.production = environment.production_map[i] as u8;
         }
         map
     }

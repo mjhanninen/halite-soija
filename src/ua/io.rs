@@ -2,7 +2,7 @@ use std::io::{self, BufRead, Stdin, Stdout, Write};
 
 use ua::world::*;
 
-struct Connection {
+pub struct Connection {
     input: Stdin,
     output: Stdout,
     buffer: String,
@@ -117,10 +117,10 @@ impl Connection {
         }
         Ok(())
     }
-    pub fn send_init(&mut self,
-                     environment: &Environment,
-                     name: &str)
-                     -> Result<(), Error> {
+    pub fn send_ready(&mut self,
+                      environment: &Environment,
+                      name: &str)
+                      -> Result<(), Error> {
         write!(self.output.lock(), "{}_{}\n", name, environment.my_tag)
             .map_err(Error::from)
     }
