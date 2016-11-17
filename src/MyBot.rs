@@ -1,4 +1,19 @@
-// This line helps Emacs not to mix the following attributes with shebang.
+// Copyright (C) 2016 Matti Hänninen
+//
+// This file is part of Umpteenth Anion.
+//
+// Umpteenth Anion is free software: you can redistribute it and/or modify it
+// under the terms of the GNU General Public License as published by the Free
+// Software Foundation, either version 3 of the License, or (at your option)
+// any later version.
+//
+// Foobar is distributed in the hope that it will be useful, but WITHOUT ANY
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+// details.
+//
+// You should have received a copy of the GNU General Public License along
+// with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 
 #![allow(non_snake_case)]
 #![allow(dead_code)]
@@ -12,9 +27,9 @@ mod ua;
 
 use std::collections::{HashSet, HashMap};
 
+use ua::io;
 use ua::map::{Map, Site};
 use ua::space::{Pos, Dir, Space};
-use ua::io;
 use ua::world::{State};
 
 fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos> {

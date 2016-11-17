@@ -1,7 +1,8 @@
-Halite-soija
-============
+Umpteenth Anion
+===============
 
-My [Halite][halite] bot.
+This is **Umpteenth Anion**, my bot for
+[Halite programming challenge][halite].
 
 [halite]: https://halite.io/
 
