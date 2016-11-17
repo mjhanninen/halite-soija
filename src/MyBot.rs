@@ -7,10 +7,10 @@
 // Software Foundation, either version 3 of the License, or (at your option)
 // any later version.
 //
-// Umpteenth Anion is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-// details.
+// Umpteenth Anion is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+// or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
 //
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
@@ -30,7 +30,7 @@ use std::collections::{HashSet, HashMap};
 use ua::io;
 use ua::map::{Map, Site};
 use ua::space::{Pos, Dir, Space};
-use ua::world::{State};
+use ua::world::State;
 
 fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos> {
     map.space

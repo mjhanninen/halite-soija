@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use ua::map::{Map};
+use ua::map::Map;
 use ua::space::{Space, Pos, Dir};
 use ua::world;
 
@@ -40,7 +40,8 @@ impl Pos {
 
 impl Map {
     pub fn from_world(environment: &world::Environment,
-                      state: &world::State) -> Map {
+                      state: &world::State)
+                      -> Map {
         let w = environment.space.width;
         let h = environment.space.height;
         let space = Space::with_dims(w as i16, h as i16);
