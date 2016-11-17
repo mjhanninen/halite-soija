@@ -50,7 +50,7 @@ impl Connection {
             let width = parts.next()
                 .ok_or(self.parse_err("missing map width"))?
                 .parse::<i16>()
-                .map_err(|e| self.parse_err("bad map width"))?;
+                .map_err(|_| self.parse_err("bad map width"))?;
             let height = parts.next()
                 .ok_or(self.parse_err("missing map height"))?
                 .parse::<i16>()
