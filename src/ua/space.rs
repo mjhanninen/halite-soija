@@ -29,17 +29,6 @@ pub enum Dir {
     West,
 }
 
-impl Dir {
-    pub fn to_code(&self) -> u8 {
-        match *self {
-            Dir::North => 1,
-            Dir::East => 2,
-            Dir::South => 3,
-            Dir::West => 4,
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Neighbors {
     pos: Pos,

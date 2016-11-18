@@ -29,7 +29,6 @@ pub struct Connection {
 pub enum Error {
     ParseError(String),
     IoError(io::Error),
-    Other(String),
 }
 
 impl From<io::Error> for Error {

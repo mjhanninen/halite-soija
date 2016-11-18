@@ -16,7 +16,6 @@
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
 #![allow(non_snake_case)]
-#![allow(dead_code)]
 
 mod ua;
 
@@ -27,6 +26,8 @@ use ua::map::{Map, Site};
 use ua::space::{Pos, Dir, Space};
 use ua::world::State;
 
+
+#[allow(dead_code)]
 fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos> {
     map.space
         .sweep()
@@ -41,6 +42,7 @@ fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos> {
         .collect::<HashSet<_>>()
 }
 
+#[allow(dead_code)]
 struct Onion<'a> {
     body: HashSet<Pos>,
     edge: HashMap<Pos, Vec<Pos>>,
@@ -51,6 +53,7 @@ struct Onion<'a> {
 use std::collections::hash_map::Entry;
 
 impl<'a> Onion<'a> {
+    #[allow(dead_code)]
     pub fn from_set(space: &'a Space, seed: &HashSet<Pos>) -> Self {
         Onion {
             body: seed.clone(),
@@ -62,6 +65,7 @@ impl<'a> Onion<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn expand(&self) -> Onion {
         let mut next_edge: HashMap<Pos, Vec<Pos>> = HashMap::new();
         for (p, _) in &self.edge {
