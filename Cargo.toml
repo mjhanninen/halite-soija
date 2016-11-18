@@ -1,9 +1,15 @@
 [package]
-name = "UmpteenthAnion"
+name = "umpteenth_anion"
 version = "0.3.0"
 authors = ["Matti Hänninen <matti@mjhanninen.com>"]
 publish = false
+readme = "README.md"
+license-file = "LICENSE.md"
+
+[lib]
+name = "ua"
+path = "src/lib/lib.rs"
 
 [[bin]]
-path = "src/MyBot.rs"
+path = "src/bot/main.rs"
 name = "MyBot"

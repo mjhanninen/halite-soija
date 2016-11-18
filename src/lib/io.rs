@@ -17,7 +17,7 @@
 
 use std::io::{self, BufRead, Stdin, Stdout, Write};
 
-use ua::world::*;
+use world::*;
 
 pub struct Connection {
     input: Stdin,

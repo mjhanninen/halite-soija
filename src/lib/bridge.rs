@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use ua::map::Map;
-use ua::space::{Space, Pos, Dir};
-use ua::world;
+use map::Map;
+use space::{Space, Pos, Dir};
+use world;
 
 impl Dir {
     #[inline]

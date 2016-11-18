@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use ua::space::{Pos, Space};
+use space::{Pos, Space};
 
 #[derive(Clone, Debug)]
 pub struct Site {

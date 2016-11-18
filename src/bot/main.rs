@@ -17,7 +17,7 @@
 
 #![allow(non_snake_case)]
 
-mod ua;
+extern crate ua;
 
 use std::collections::{HashSet, HashMap};
 
