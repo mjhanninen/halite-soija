@@ -15,10 +15,28 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod bridge;
-pub mod io;
-pub mod map;
-pub mod onion;
-pub mod space;
-pub mod util;
-pub mod world;
+use std::fmt::Debug;
+use std::io::Write;
+use std::result::Result;
+
+pub trait LoggedUnwrap<T>
+{
+    fn unwrap_or_log(self, log: &mut Write) -> T;
+}
+
+impl<T, E> LoggedUnwrap<T> for Result<T, E>
+    where E: Debug
+{
+    fn unwrap_or_log(self, log: &mut Write) -> T
+    {
+        match self {
+            Ok(v) => v,
+            Err(e) => {
+                if write!(log, "unwrapping failed due to: {:?}\n", e).is_ok() {
+                    log.flush().unwrap();
+                }
+                panic!();
+            }
+        }
+    }
+}

@@ -20,12 +20,13 @@
 extern crate ua;
 
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 
 use ua::io;
 use ua::map::{Map, Site};
-use ua::space::{Dir, Pos, Space};
+use ua::space::{Dir, Pos};
 use ua::world::State;
-
+use ua::util::LoggedUnwrap;
 
 #[allow(dead_code)]
 fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos>
@@ -41,62 +42,6 @@ fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos>
            }
        })
        .collect::<HashSet<_>>()
-}
-
-#[allow(dead_code)]
-struct Onion<'a>
-{
-    body: HashSet<Pos>,
-    edge: HashMap<Pos, Vec<Pos>>,
-    generation: i32,
-    space: &'a Space,
-}
-
-use std::collections::hash_map::Entry;
-
-impl<'a> Onion<'a>
-{
-    #[allow(dead_code)]
-    pub fn from_set(space: &'a Space, seed: &HashSet<Pos>) -> Self
-    {
-        Onion {
-            body: seed.clone(),
-            edge: seed.iter()
-                      .map(|p| (p.clone(), Vec::new()))
-                      .collect::<HashMap<_, _>>(),
-            generation: 0,
-            space: space,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn expand(&self) -> Onion
-    {
-        let mut next_edge: HashMap<Pos, Vec<Pos>> = HashMap::new();
-        for (p, _) in &self.edge {
-            for n in p.neighbors() {
-                let n = self.space.normalize(&n);
-                if !self.body.contains(&n) {
-                    match next_edge.entry(n) {
-                        Entry::Occupied(value) => {
-                            value.into_mut().push(p.clone());
-                        }
-                        Entry::Vacant(value) => {
-                            value.insert(vec![p.clone()]);
-                        }
-                    }
-                }
-            }
-        }
-        let mut next_body = self.body.clone();
-        next_body.extend(next_edge.iter().map(|(p, _)| p.clone()));
-        Onion {
-            body: next_body,
-            edge: next_edge,
-            generation: self.generation + 1,
-            space: self.space,
-        }
-    }
 }
 
 fn tick_site(pos: &Pos, src: &Site, map: &Map, me: u8) -> Option<Dir>
@@ -131,32 +76,6 @@ fn tick(map: &Map, me: u8) -> HashMap<Pos, Dir>
         }
     }
     moves
-}
-
-use std::fmt::Debug;
-use std::io::Write;
-use std::fs::File;
-
-trait LoggedUnwrap<T>
-{
-    fn unwrap_or_log(self, log: &mut Write) -> T;
-}
-
-impl<T, E> LoggedUnwrap<T> for Result<T, E>
-    where E: Debug
-{
-    fn unwrap_or_log(self, log: &mut Write) -> T
-    {
-        match self {
-            Ok(v) => v,
-            Err(e) => {
-                if write!(log, "unwrapping due to: {:?}\n", e).is_ok() {
-                    log.flush().unwrap();
-                }
-                panic!();
-            }
-        }
-    }
 }
 
 fn main()
