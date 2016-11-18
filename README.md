@@ -8,23 +8,19 @@ This is **Umpteenth Anion**, my bot for
 
 # License
 
-Original work Copyright (C) 2016 Benjamin Spector
+Copyright (C) 2016 Matti Hänninen
 
-Modified work Copyright (C) 2016 Matti Hänninen
-
-This bot was derived from the Rust starter package for Halite.  The starter
-pack is available on [Halite download page][halite-download] or from the
-[Halite Github repository][halite-github] and is licensed under the
-[MIT License][mit]
-
-The modifications to the original starter package licensed under the
-[GNU General Public License, version 3][gpl3] or (at your option) any later
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
 version.
 
-[halite-download]: https://halite.io/downloads.php
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+details.
 
-[halite-github]: https://github.com/HaliteChallenge/Halite
-
-[mit]: https://opensource.org/licenses/mit-license.php
+You should have received a copy of the GNU General Public License along with
+this program.  If not, see <http://www.gnu.org/licenses/>.
 
 [gpl3]: https://opensource.org/licenses/GPL-3.0

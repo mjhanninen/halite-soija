@@ -1,20 +1,9 @@
 [package]
 name = "UmpteenthAnion"
-version = "0.1.0"
-authors = [
-    "Benjamin Spector <benjaminfspector@gmail.com>",
-    "Matti Hänninen <matti@mjhanninen.com>"
-]
+version = "0.3.0"
+authors = ["Matti Hänninen <matti@mjhanninen.com>"]
 publish = false
-
-[dependencies]
-rand = "*"
-text_io = "*"
 
 [[bin]]
 path = "src/MyBot.rs"
 name = "MyBot"
-
-[[bin]]
-path = "src/RandomBot.rs"
-name = "RandomBot"

@@ -18,11 +18,6 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-extern crate rand;
-
-#[macro_use]
-extern crate text_io;
-
 mod ua;
 
 use std::collections::{HashSet, HashMap};
