@@ -16,13 +16,15 @@
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Pos {
+pub struct Pos
+{
     pub x: i16,
     pub y: i16,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Dir {
+pub enum Dir
+{
     North,
     East,
     South,
@@ -30,14 +32,17 @@ pub enum Dir {
 }
 
 #[derive(Clone, Debug)]
-pub struct Neighbors {
+pub struct Neighbors
+{
     pos: Pos,
     dir: Option<Dir>,
 }
 
-impl Pos {
+impl Pos
+{
     #[inline]
-    pub fn neighbor(&self, dir: Dir) -> Pos {
+    pub fn neighbor(&self, dir: Dir) -> Pos
+    {
         match dir {
             Dir::North => {
                 Pos {
@@ -67,7 +72,8 @@ impl Pos {
     }
 
     #[inline]
-    pub fn neighbors(&self) -> Neighbors {
+    pub fn neighbors(&self) -> Neighbors
+    {
         Neighbors {
             pos: self.clone(),
             dir: Some(Dir::North),
@@ -75,10 +81,12 @@ impl Pos {
     }
 }
 
-impl Iterator for Neighbors {
+impl Iterator for Neighbors
+{
     type Item = Pos;
     #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<Self::Item>
+    {
         match self.dir {
             Some(Dir::North) => {
                 self.dir = Some(Dir::East);
@@ -102,13 +110,15 @@ impl Iterator for Neighbors {
 }
 
 #[derive(Clone, Debug)]
-pub struct Space {
+pub struct Space
+{
     pub width: i16,
     pub height: i16,
 }
 
 #[inline]
-fn modulo(n: i16, m: i16) -> i16 {
+fn modulo(n: i16, m: i16) -> i16
+{
     assert!(m > 0);
     if n < 0 {
         n % m + m
@@ -120,7 +130,8 @@ fn modulo(n: i16, m: i16) -> i16 {
 }
 
 #[inline]
-fn shortest_diff(a: i16, b: i16, m: i16) -> i16 {
+fn shortest_diff(a: i16, b: i16, m: i16) -> i16
+{
     let d = modulo(b, m) - modulo(a, m);
     if d < -m / 2 {
         d + m
@@ -131,8 +142,10 @@ fn shortest_diff(a: i16, b: i16, m: i16) -> i16 {
     }
 }
 
-impl Space {
-    pub fn with_dims(width: i16, height: i16) -> Self {
+impl Space
+{
+    pub fn with_dims(width: i16, height: i16) -> Self
+    {
         assert!(width > 0 && height > 0);
         Space {
             width: width,
@@ -141,7 +154,8 @@ impl Space {
     }
 
     #[inline]
-    pub fn normalize(&self, p: &Pos) -> Pos {
+    pub fn normalize(&self, p: &Pos) -> Pos
+    {
         Pos {
             x: modulo(p.x, self.width),
             y: modulo(p.y, self.height),
@@ -149,7 +163,8 @@ impl Space {
     }
 
     #[inline]
-    pub fn ix(&self, p: &Pos) -> usize {
+    pub fn ix(&self, p: &Pos) -> usize
+    {
         let x = modulo(p.x, self.width);
         let y = modulo(p.y, self.height);
         x as usize + (y as usize) * (self.width as usize)
@@ -158,12 +173,14 @@ impl Space {
     // Weird to call it "len" but, hey, that's conisitent with Rust's
     // containers.
     #[inline]
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> usize
+    {
         self.width as usize * self.height as usize
     }
 
     #[inline]
-    pub fn sweep(&self) -> Sweep {
+    pub fn sweep(&self) -> Sweep
+    {
         Sweep {
             x: 0,
             y: 0,
@@ -173,7 +190,8 @@ impl Space {
     }
 
     #[inline]
-    pub fn direction(&self, source: &Pos, target: &Pos) -> Dir {
+    pub fn direction(&self, source: &Pos, target: &Pos) -> Dir
+    {
         let dx = shortest_diff(source.x, target.x, self.width);
         let dy = shortest_diff(source.y, target.y, self.height);
         if dx.abs() > dy.abs() {
@@ -192,17 +210,20 @@ impl Space {
     }
 }
 
-pub struct Sweep {
+pub struct Sweep
+{
     width: i16,
     height: i16,
     x: i16,
     y: i16,
 }
 
-impl Iterator for Sweep {
+impl Iterator for Sweep
+{
     type Item = Pos;
     #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<Self::Item>
+    {
         if self.y < self.height {
             let p = Pos {
                 x: self.x,
@@ -225,7 +246,8 @@ impl Iterator for Sweep {
 mod test {
 
     #[test]
-    fn test_space_sweep() {
+    fn test_space_sweep()
+    {
         use super::Space;
         let space = Space::with_dims(3, 5);
         let mut n = 0;

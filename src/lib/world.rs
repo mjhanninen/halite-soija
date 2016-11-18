@@ -22,14 +22,17 @@ pub type Map<T> = Vec<T>;
 pub type Production = i16;
 
 #[derive(Debug)]
-pub struct Environment {
+pub struct Environment
+{
     pub my_tag: Tag,
     pub space: Space,
     pub production_map: Map<Production>,
 }
 
-impl Environment {
-    pub fn create(my_tag: Tag, width: i16, height: i16) -> Self {
+impl Environment
+{
+    pub fn create(my_tag: Tag, width: i16, height: i16) -> Self
+    {
         let space = Space::with_dims(width, height);
         let production_map = Vec::with_capacity(space.len());
         Environment {
@@ -45,18 +48,22 @@ pub type Tag = u8;
 pub type Strength = i16;
 
 #[derive(Clone, Debug)]
-pub struct Occupation {
+pub struct Occupation
+{
     pub tag: Tag,
     pub strength: Strength,
 }
 
 #[derive(Debug)]
-pub struct State {
+pub struct State
+{
     pub occupation_map: Map<Occupation>,
 }
 
-impl State {
-    pub fn for_environment(environment: &Environment) -> Self {
+impl State
+{
+    pub fn for_environment(environment: &Environment) -> Self
+    {
         State {
             occupation_map: vec![Occupation {tag: 0, strength: 0};
                  environment.space.len()],

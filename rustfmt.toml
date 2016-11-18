@@ -18,3 +18,20 @@ write_mode = "Overwrite"
 
 # In some places `try!` still trumps.
 use_try_shorthand = false
+
+# Visual indentation of chained calls is easier to follow (for me)
+chain_base_indent = "Visual"
+chain_indent = "Visual"
+chain_overflow_last = false
+# XXX: But, alas, it seems rustfmt doesn't handle the closures that are
+# embedded in chained expressions that well.  This leaves them alone but you
+# need to pay some attention to them yourself.
+closure_block_indent_threshold = -1
+
+# To make the function body stand out from the function signature.  And the
+# rest of the top-levelish forms should follow in the name of consistency.
+fn_brace_style = "AlwaysNextLine"
+item_brace_style = "AlwaysNextLine"
+
+# This makes the return type stand out from the function arguments.
+fn_return_indent = "WithWhereClause"

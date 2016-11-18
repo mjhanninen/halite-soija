@@ -19,10 +19,12 @@ use map;
 use space;
 use world;
 
-impl map::Map {
+impl map::Map
+{
     pub fn from_world(environment: &world::Environment,
                       state: &world::State)
-                      -> map::Map {
+        -> map::Map
+    {
         let w = environment.space.width;
         let h = environment.space.height;
         let space = space::Space::with_dims(w as i16, h as i16);

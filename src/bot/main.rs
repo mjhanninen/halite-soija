@@ -28,22 +28,24 @@ use ua::world::State;
 
 
 #[allow(dead_code)]
-fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos> {
+fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos>
+{
     map.space
-        .sweep()
-        .filter_map(|pos| {
-            let site = map.site(&pos);
-            if site.owner == who {
-                Some(map.space.normalize(&pos))
-            } else {
-                None
-            }
-        })
-        .collect::<HashSet<_>>()
+       .sweep()
+       .filter_map(|pos| {
+           let site = map.site(&pos);
+           if site.owner == who {
+               Some(map.space.normalize(&pos))
+           } else {
+               None
+           }
+       })
+       .collect::<HashSet<_>>()
 }
 
 #[allow(dead_code)]
-struct Onion<'a> {
+struct Onion<'a>
+{
     body: HashSet<Pos>,
     edge: HashMap<Pos, Vec<Pos>>,
     generation: i32,
@@ -52,21 +54,24 @@ struct Onion<'a> {
 
 use std::collections::hash_map::Entry;
 
-impl<'a> Onion<'a> {
+impl<'a> Onion<'a>
+{
     #[allow(dead_code)]
-    pub fn from_set(space: &'a Space, seed: &HashSet<Pos>) -> Self {
+    pub fn from_set(space: &'a Space, seed: &HashSet<Pos>) -> Self
+    {
         Onion {
             body: seed.clone(),
             edge: seed.iter()
-                .map(|p| (p.clone(), Vec::new()))
-                .collect::<HashMap<_, _>>(),
+                      .map(|p| (p.clone(), Vec::new()))
+                      .collect::<HashMap<_, _>>(),
             generation: 0,
             space: space,
         }
     }
 
     #[allow(dead_code)]
-    pub fn expand(&self) -> Onion {
+    pub fn expand(&self) -> Onion
+    {
         let mut next_edge: HashMap<Pos, Vec<Pos>> = HashMap::new();
         for (p, _) in &self.edge {
             for n in p.neighbors() {
@@ -94,7 +99,8 @@ impl<'a> Onion<'a> {
     }
 }
 
-fn tick_site(pos: &Pos, src: &Site, map: &Map, me: u8) -> Option<Dir> {
+fn tick_site(pos: &Pos, src: &Site, map: &Map, me: u8) -> Option<Dir>
+{
     for n in pos.neighbors() {
         let tgt = map.site(&n);
         if tgt.owner != me && tgt.strength < src.strength {
@@ -110,7 +116,8 @@ fn tick_site(pos: &Pos, src: &Site, map: &Map, me: u8) -> Option<Dir> {
     None
 }
 
-fn tick(map: &Map, me: u8) -> HashMap<Pos, Dir> {
+fn tick(map: &Map, me: u8) -> HashMap<Pos, Dir>
+{
     // let occupations = calc_occupations(map, me);
     // let gen0 = Onion::from_set(&map.space, &occupations);
     // let gen1 = gen0.expand();
@@ -130,14 +137,16 @@ use std::fmt::Debug;
 use std::io::Write;
 use std::fs::File;
 
-trait LoggedUnwrap<T> {
+trait LoggedUnwrap<T>
+{
     fn unwrap_or_log(self, log: &mut Write) -> T;
 }
 
 impl<T, E> LoggedUnwrap<T> for Result<T, E>
     where E: Debug
 {
-    fn unwrap_or_log(self, log: &mut Write) -> T {
+    fn unwrap_or_log(self, log: &mut Write) -> T
+    {
         match self {
             Ok(v) => v,
             Err(e) => {
@@ -150,26 +159,27 @@ impl<T, E> LoggedUnwrap<T> for Result<T, E>
     }
 }
 
-fn main() {
+fn main()
+{
     let mut log_file = File::create("runtime.log").unwrap();
     let mut connection = io::Connection::new();
     let environment = connection.recv_environment()
-        .unwrap_or_log(&mut log_file);
+                                .unwrap_or_log(&mut log_file);
     let mut state_frame = State::for_environment(&environment);
     connection.recv_state(&environment, &mut state_frame)
-        .unwrap_or_log(&mut log_file);
+              .unwrap_or_log(&mut log_file);
     // You've got 15 seconds to spare on this line. Use it well.
     connection.send_ready(&environment, "UmpteenthAnion")
-        .unwrap_or_log(&mut log_file);
+              .unwrap_or_log(&mut log_file);
     loop {
         connection.recv_state(&environment, &mut state_frame)
-            .unwrap_or_log(&mut log_file);
+                  .unwrap_or_log(&mut log_file);
         let map = Map::from_world(&environment, &state_frame);
         let moves = tick(&map, environment.my_tag)
             .iter()
             .map(|(pos, dir)| (pos.clone(), Some(dir.clone())))
             .collect::<Vec<_>>();
         connection.send_moves(moves.iter())
-            .unwrap_or_log(&mut log_file);
+                  .unwrap_or_log(&mut log_file);
     }
 }
