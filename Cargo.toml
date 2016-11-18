@@ -13,3 +13,6 @@ path = "src/lib/lib.rs"
 [[bin]]
 path = "src/bot/main.rs"
 name = "MyBot"
+
+[dependencies]
+getopts = "^0.2"

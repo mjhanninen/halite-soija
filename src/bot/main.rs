@@ -17,88 +17,77 @@
 
 #![allow(non_snake_case)]
 
+extern crate getopts;
 extern crate ua;
 
-use std::collections::{HashMap, HashSet};
-use std::fs::File;
+use std::io::Write;
+use std::env;
 
-use ua::io;
-use ua::map::{Map, Site};
-use ua::space::{Dir, Pos};
-use ua::world::State;
-use ua::util::LoggedUnwrap;
+mod simple;
 
-#[allow(dead_code)]
-fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos>
+enum Brain
 {
-    map.space
-       .sweep()
-       .filter_map(|pos| {
-           let site = map.site(&pos);
-           if site.owner == who {
-               Some(map.space.normalize(&pos))
-           } else {
-               None
-           }
-       })
-       .collect::<HashSet<_>>()
+    Simple,
 }
 
-fn tick_site(pos: &Pos, src: &Site, map: &Map, me: u8) -> Option<Dir>
+struct Config
 {
-    for n in pos.neighbors() {
-        let tgt = map.site(&n);
-        if tgt.owner != me && tgt.strength < src.strength {
-            return Some(map.space.direction(pos, &n));
-        }
-    }
-    for n in pos.neighbors() {
-        let tgt = map.site(&n);
-        if tgt.owner == me && 2 * (tgt.strength as i16) < src.strength as i16 {
-            return Some(map.space.direction(pos, &n));
-        }
-    }
-    None
+    brain: Brain,
+    log_path: Option<String>,
 }
 
-fn tick(map: &Map, me: u8) -> HashMap<Pos, Dir>
+enum OptionParsing
 {
-    // let occupations = calc_occupations(map, me);
-    // let gen0 = Onion::from_set(&map.space, &occupations);
-    // let gen1 = gen0.expand();
-    let mut moves = HashMap::new();
-    for p in map.space.sweep() {
-        let source = map.site(&p);
-        if source.owner == me {
-            if let Some(dir) = tick_site(&p, source, map, me) {
-                moves.insert(p, dir);
+    ShowUsage(String),
+    Failed,
+    Config(Config),
+}
+
+fn parse_options() -> OptionParsing
+{
+    let mut opts = getopts::Options::new();
+    opts.optflag("h", "help", "Display this usage information")
+        .optopt("b", "brain", "Select the bot brain to use", "NAME")
+        .optopt("l", "log", "Produce log of internal events to file", "FILE");
+    let args = env::args().collect::<Vec<String>>();
+    if let Ok(matches) = opts.parse(&args[1..]) {
+        if matches.opt_present("h") {
+            let brief = format!("usage: {} [ options ]", args[0]);
+            OptionParsing::ShowUsage(opts.usage(&brief))
+        } else if !matches.free.is_empty() {
+            OptionParsing::Failed
+        } else {
+            let mut config = Config {
+                brain: Brain::Simple,
+                log_path: None,
+            };
+            if let Some(log_path) = matches.opt_str("l") {
+                config.log_path = Some(log_path);
             }
+            OptionParsing::Config(config)
         }
+    } else {
+        OptionParsing::Failed
     }
-    moves
 }
 
 fn main()
 {
-    let mut log_file = File::create("runtime.log").unwrap();
-    let mut connection = io::Connection::new();
-    let environment = connection.recv_environment()
-                                .unwrap_or_log(&mut log_file);
-    let mut state_frame = State::for_environment(&environment);
-    connection.recv_state(&environment, &mut state_frame)
-              .unwrap_or_log(&mut log_file);
-    // You've got 15 seconds to spare on this line. Use it well.
-    connection.send_ready(&environment, "UmpteenthAnion")
-              .unwrap_or_log(&mut log_file);
-    loop {
-        connection.recv_state(&environment, &mut state_frame)
-                  .unwrap_or_log(&mut log_file);
-        let map = Map::from_world(&environment, &state_frame);
-        let moves = tick(&map, environment.my_tag)
-            .iter()
-            .map(|(pos, dir)| (pos.clone(), Some(dir.clone())))
-            .collect::<Vec<_>>();
-        connection.send_moves(moves.iter())
-                  .unwrap_or_log(&mut log_file);
+    match parse_options() {
+        OptionParsing::Config(config) => {
+            match config.brain {
+                Brain::Simple => simple::run()
+            }
+        }
+        OptionParsing::ShowUsage(usage) => {
+            println!("{}", usage);
+            std::process::exit(0);
+        }
+        OptionParsing::Failed => {
+            writeln!(std::io::stderr(),
+                     "Error: Bad command line (try -h for help)")
+                .unwrap();
+            std::process::exit(1);
+        }
     }
 }
