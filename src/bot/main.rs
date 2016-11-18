@@ -167,7 +167,7 @@ fn main() {
         let map = Map::from_world(&environment, &state_frame);
         let moves = tick(&map, environment.my_tag)
             .iter()
-            .map(|(pos, dir)| (pos.to_world(), dir.to_world()))
+            .map(|(pos, dir)| (pos.clone(), Some(dir.clone())))
             .collect::<Vec<_>>();
         connection.send_moves(moves.iter())
             .unwrap_or_log(&mut log_file);

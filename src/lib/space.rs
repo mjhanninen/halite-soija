@@ -103,8 +103,8 @@ impl Iterator for Neighbors {
 
 #[derive(Clone, Debug)]
 pub struct Space {
-    pub w: i16,
-    pub h: i16,
+    pub width: i16,
+    pub height: i16,
 }
 
 #[inline]
@@ -132,29 +132,34 @@ fn shortest_diff(a: i16, b: i16, m: i16) -> i16 {
 }
 
 impl Space {
-    pub fn with_dims(w: i16, h: i16) -> Self {
-        assert!(w > 0 && h > 0);
-        Space { w: w, h: h }
+    pub fn with_dims(width: i16, height: i16) -> Self {
+        assert!(width > 0 && height > 0);
+        Space {
+            width: width,
+            height: height,
+        }
     }
 
     #[inline]
     pub fn normalize(&self, p: &Pos) -> Pos {
         Pos {
-            x: modulo(p.x, self.w),
-            y: modulo(p.y, self.h),
+            x: modulo(p.x, self.width),
+            y: modulo(p.y, self.height),
         }
     }
 
     #[inline]
     pub fn ix(&self, p: &Pos) -> usize {
-        let x = modulo(p.x, self.w);
-        let y = modulo(p.y, self.h);
-        x as usize + (y as usize) * (self.w as usize)
+        let x = modulo(p.x, self.width);
+        let y = modulo(p.y, self.height);
+        x as usize + (y as usize) * (self.width as usize)
     }
 
+    // Weird to call it "len" but, hey, that's conisitent with Rust's
+    // containers.
     #[inline]
     pub fn len(&self) -> usize {
-        self.w as usize * self.h as usize
+        self.width as usize * self.height as usize
     }
 
     #[inline]
@@ -162,15 +167,15 @@ impl Space {
         Sweep {
             x: 0,
             y: 0,
-            w: self.w,
-            h: self.h,
+            width: self.width,
+            height: self.height,
         }
     }
 
     #[inline]
     pub fn direction(&self, source: &Pos, target: &Pos) -> Dir {
-        let dx = shortest_diff(source.x, target.x, self.w);
-        let dy = shortest_diff(source.y, target.y, self.h);
+        let dx = shortest_diff(source.x, target.x, self.width);
+        let dy = shortest_diff(source.y, target.y, self.height);
         if dx.abs() > dy.abs() {
             if dx < 0 {
                 Dir::West
@@ -188,8 +193,8 @@ impl Space {
 }
 
 pub struct Sweep {
-    w: i16,
-    h: i16,
+    width: i16,
+    height: i16,
     x: i16,
     y: i16,
 }
@@ -198,17 +203,17 @@ impl Iterator for Sweep {
     type Item = Pos;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.y < self.h {
+        if self.y < self.height {
             let p = Pos {
                 x: self.x,
                 y: self.y,
             };
             self.x += 1;
-            if self.x == self.w {
+            if self.x == self.width {
                 self.y += 1;
                 self.x = 0;
             }
-            assert!(self.x < self.w);
+            assert!(self.x < self.width);
             Some(p)
         } else {
             None

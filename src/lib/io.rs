@@ -17,6 +17,7 @@
 
 use std::io::{self, BufRead, Stdin, Stdout, Write};
 
+use space::Dir;
 use world::*;
 
 pub struct Connection {
@@ -85,7 +86,7 @@ impl Connection {
                 .map_err(|_| self.parse_err("bad production level")));
             environment.production_map.push(production);
         }
-        if environment.production_map.len() != environment.space.size() {
+        if environment.production_map.len() != environment.space.len() {
             return Err(self.parse_err("production map size mismatches expected \
                                        size"));
         }
@@ -95,7 +96,7 @@ impl Connection {
                       environment: &Environment,
                       state: &mut State)
                       -> Result<(), Error> {
-        assert_eq!(state.occupation_map.len(), environment.space.size());
+        assert_eq!(state.occupation_map.len(), environment.space.len());
         try!(self.recv_string());
         let mut parts = self.buffer.trim_right().split(" ");
         // Occupiers
@@ -147,16 +148,16 @@ impl Connection {
         let mut output_handle = self.output.lock();
         for &(ref pos, ref dir) in moves {
             let encoded_dir = match *dir {
-                Dir::Still => 0,
-                Dir::North => 1,
-                Dir::East => 2,
-                Dir::South => 3,
-                Dir::West => 4,
+                None => 0,
+                Some(Dir::North) => 1,
+                Some(Dir::East) => 2,
+                Some(Dir::South) => 3,
+                Some(Dir::West) => 4,
             };
             if count > 0 {
                 try!(write!(output_handle, " "));
             }
-            try!(write!(output_handle, "{} {} {}", pos.0, pos.1, encoded_dir));
+            try!(write!(output_handle, "{} {} {}", pos.x, pos.y, encoded_dir));
             count += 1;
         }
         write!(output_handle, "\n").map_err(Error::from)
