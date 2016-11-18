@@ -35,3 +35,8 @@ item_brace_style = "AlwaysNextLine"
 
 # This makes the return type stand out from the function arguments.
 fn_return_indent = "WithWhereClause"
+
+# As the import (or #include order) in Rust doesn't matter there is no excuse
+# to not keep things lexicographically indexed.  Ever seen an English language
+# dictionary with random word ordering?
+reorder_imports = true

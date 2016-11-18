@@ -19,11 +19,11 @@
 
 extern crate ua;
 
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 use ua::io;
 use ua::map::{Map, Site};
-use ua::space::{Pos, Dir, Space};
+use ua::space::{Dir, Pos, Space};
 use ua::world::State;
 
 
