@@ -15,5 +15,6 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod simple;
+pub mod lone_expander;
 pub mod probe;
+pub mod simple;

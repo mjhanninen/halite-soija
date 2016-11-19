@@ -29,22 +29,20 @@ mod brain;
 
 enum Brain
 {
+    LoneExpander,
     Probe,
     Simple,
 }
 
 impl Brain
 {
-    #[cfg(feature = "probe")]
     fn default() -> Self
     {
-        Brain::Probe
-    }
-
-    #[cfg(not(feature = "probe"))]
-    fn default() -> Self
-    {
-        Brain::Simple
+        if cfg!(feature = "probe") {
+            Brain::Probe
+        } else {
+            Brain::LoneExpander
+        }
     }
 }
 
@@ -54,6 +52,7 @@ impl FromStr for Brain
     fn from_str(s: &str) -> Result<Self, Self::Err>
     {
         match s {
+            "lone_expander" => Ok(Brain::LoneExpander),
             "probe" => Ok(Brain::Probe),
             "simple" => Ok(Brain::Simple),
             _ => Err(format!("no brain with name '{}'", s)),
@@ -117,6 +116,7 @@ fn main()
     match parse_options() {
         OptionParsing::Config(config) => {
             match config.brain {
+                Brain::LoneExpander => brain::lone_expander::run(),
                 Brain::Probe => brain::probe::run(),
                 Brain::Simple => brain::simple::run(),
             }
