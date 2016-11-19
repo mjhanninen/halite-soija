@@ -15,63 +15,54 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::collections::{HashMap, HashSet};
 use std::fs::File;
 
+use ua::action::Action;
+use ua::dir::Dir;
 use ua::io;
-use ua::map::{Map, Site};
-use ua::space::{Dir, Pos};
+use ua::space::Frame;
 use ua::util::LoggedUnwrap;
-use ua::world::State;
+use ua::world::{Environment, Map, Occupation, State};
 
-#[allow(dead_code)]
-fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos>
+fn tick_site(origin: &Frame,
+             src: &Occupation,
+             occupations: &Map<Occupation>,
+             me: u8)
+    -> Option<Dir>
 {
-    map.space
-       .sweep()
-       .filter_map(|pos| {
-           let site = map.site(&pos);
-           if site.owner == who {
-               Some(map.space.normalize(&pos))
-           } else {
-               None
-           }
-       })
-       .collect::<HashSet<_>>()
-}
-
-fn tick_site(pos: &Pos, src: &Site, map: &Map, me: u8) -> Option<Dir>
-{
-    for n in pos.neighbors() {
-        let tgt = map.site(&n);
-        if tgt.owner != me && tgt.strength < src.strength {
-            return Some(map.space.direction(pos, &n));
+    for d in Dir::dirs() {
+        let f = origin.adjacent_in(d);
+        let tgt = &occupations[f.ix()];
+        if tgt.tag != me && tgt.strength < src.strength {
+            return Some(d);
         }
     }
-    for n in pos.neighbors() {
-        let tgt = map.site(&n);
-        if tgt.owner == me && 2 * (tgt.strength as i16) < src.strength as i16 {
-            return Some(map.space.direction(pos, &n));
+    for d in Dir::dirs() {
+        let f = origin.adjacent_in(d);
+        let tgt = &occupations[f.ix()];
+        if tgt.tag == me && 2 * (tgt.strength as i16) < src.strength as i16 {
+            return Some(d);
         }
     }
     None
 }
 
-fn tick(map: &Map, me: u8) -> HashMap<Pos, Dir>
+fn tick(environment: &Environment, state: &State) -> Vec<Action>
 {
-    // let occupations = calc_occupations(map, me);
-    // let gen0 = Onion::from_set(&map.space, &occupations);
-    // let gen1 = gen0.expand();
-    let mut moves = HashMap::new();
-    for p in map.space.sweep() {
-        let source = map.site(&p);
-        if source.owner == me {
-            if let Some(dir) = tick_site(&p, source, map, me) {
-                moves.insert(p, dir);
+    let me = environment.my_tag;
+    let mut actions = vec![];
+    for f in environment.space.frames() {
+        let source = &state.occupation_map[f.ix()];
+        if source.tag == me {
+            if let Some(dir) = tick_site(&f,
+                                         source,
+                                         &state.occupation_map,
+                                         me) {
+                actions.push((f.coord(), Some(dir)));
             }
         }
     }
-    moves
+    actions
 }
 
 pub fn run()
@@ -89,12 +80,8 @@ pub fn run()
     loop {
         connection.recv_state(&environment, &mut state_frame)
                   .unwrap_or_log(&mut log_file);
-        let map = Map::from_world(&environment, &state_frame);
-        let moves = tick(&map, environment.my_tag)
-            .iter()
-            .map(|(pos, dir)| (pos.clone(), Some(dir.clone())))
-            .collect::<Vec<_>>();
-        connection.send_moves(moves.iter())
+        let actions = tick(&environment, &state_frame);
+        connection.send_actions(actions.iter())
                   .unwrap_or_log(&mut log_file);
     }
 }

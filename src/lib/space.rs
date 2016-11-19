@@ -15,99 +15,8 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Pos
-{
-    pub x: i16,
-    pub y: i16,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum Dir
-{
-    North,
-    East,
-    South,
-    West,
-}
-
-#[derive(Clone, Debug)]
-pub struct Neighbors
-{
-    pos: Pos,
-    dir: Option<Dir>,
-}
-
-impl Pos
-{
-    #[inline]
-    pub fn neighbor(&self, dir: Dir) -> Pos
-    {
-        match dir {
-            Dir::North => {
-                Pos {
-                    x: self.x,
-                    y: self.y - 1,
-                }
-            }
-            Dir::East => {
-                Pos {
-                    x: self.x + 1,
-                    y: self.y,
-                }
-            }
-            Dir::South => {
-                Pos {
-                    x: self.x,
-                    y: self.y + 1,
-                }
-            }
-            Dir::West => {
-                Pos {
-                    x: self.x - 1,
-                    y: self.y,
-                }
-            }
-        }
-    }
-
-    #[inline]
-    pub fn neighbors(&self) -> Neighbors
-    {
-        Neighbors {
-            pos: self.clone(),
-            dir: Some(Dir::North),
-        }
-    }
-}
-
-impl Iterator for Neighbors
-{
-    type Item = Pos;
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item>
-    {
-        match self.dir {
-            Some(Dir::North) => {
-                self.dir = Some(Dir::East);
-                Some(self.pos.neighbor(Dir::North))
-            }
-            Some(Dir::East) => {
-                self.dir = Some(Dir::South);
-                Some(self.pos.neighbor(Dir::East))
-            }
-            Some(Dir::South) => {
-                self.dir = Some(Dir::West);
-                Some(self.pos.neighbor(Dir::South))
-            }
-            Some(Dir::West) => {
-                self.dir = None;
-                Some(self.pos.neighbor(Dir::West))
-            }
-            None => None,
-        }
-    }
-}
+use coord::Coord;
+use dir::Dir;
 
 #[derive(Clone, Debug)]
 pub struct Frames<'a>
@@ -178,21 +87,63 @@ impl<'a> Frame<'a>
         self.space.frames()
     }
 
+    #[inline]
     pub fn ix(&self) -> usize
     {
         self.origin as usize
     }
 
-    pub fn coord(&self) -> Pos
+    #[inline]
+    pub fn coord(&self) -> Coord
     {
         let y = self.origin / self.space.w;
         let x = self.origin - y * self.space.w;
-        Pos {
+        Coord {
             x: x as i16,
             y: y as i16,
         }
     }
 
+    #[inline]
+    pub fn adjacent_in(&self, dir: Dir) -> Frame<'a>
+    {
+        let origin = match dir {
+            Dir::North => {
+                if self.origin < self.space.w {
+                    self.origin + self.space.sz - self.space.w
+                } else {
+                    self.origin - self.space.w
+                }
+            }
+            Dir::East => {
+                let origin = self.origin + 1;
+                if origin == self.space.sz {
+                    0
+                } else {
+                    origin
+                }
+            }
+            Dir::South => {
+                let origin = self.origin + self.space.w;
+                if origin >= self.space.sz {
+                    origin - self.space.sz
+                } else {
+                    origin
+                }
+            }
+            Dir::West => {
+                if self.origin == 0 {
+                    self.space.sz - 1
+                } else {
+                    self.origin - 1
+                }
+            }
+        };
+        assert!(origin < self.space.sz);
+        Frame { origin: origin, ..*self }
+    }
+
+    #[inline]
     pub fn l1_norm(&self, other: &Frame) -> i16
     {
         assert!(self.space == other.space);
@@ -205,32 +156,6 @@ impl<'a> Frame<'a>
         let dx = modular_dist(x1, x2, w);
         let dy = modular_dist(y1, y2, h);
         (dx + dy) as i16
-    }
-}
-
-#[inline]
-fn modulo(n: i16, m: i16) -> i16
-{
-    assert!(m > 0);
-    if n < 0 {
-        n % m + m
-    } else if n < m {
-        n
-    } else {
-        n % m
-    }
-}
-
-#[inline]
-fn shortest_diff(a: i16, b: i16, m: i16) -> i16
-{
-    let d = modulo(b, m) - modulo(a, m);
-    if d < -m / 2 {
-        d + m
-    } else if d > m / 2 {
-        d - m
-    } else {
-        d
     }
 }
 
@@ -248,60 +173,12 @@ impl Space
         }
     }
 
-    #[inline]
-    pub fn normalize(&self, p: &Pos) -> Pos
-    {
-        Pos {
-            x: modulo(p.x, self.width),
-            y: modulo(p.y, self.height),
-        }
-    }
-
-    #[inline]
-    pub fn ix(&self, p: &Pos) -> usize
-    {
-        let x = modulo(p.x, self.width);
-        let y = modulo(p.y, self.height);
-        x as usize + (y as usize) * (self.width as usize)
-    }
-
     // Weird to call it "len" but, hey, that's conisitent with Rust's
     // containers.
     #[inline]
     pub fn len(&self) -> usize
     {
         self.width as usize * self.height as usize
-    }
-
-    #[inline]
-    pub fn sweep(&self) -> Sweep
-    {
-        Sweep {
-            x: 0,
-            y: 0,
-            width: self.width,
-            height: self.height,
-        }
-    }
-
-    #[inline]
-    pub fn direction(&self, source: &Pos, target: &Pos) -> Dir
-    {
-        let dx = shortest_diff(source.x, target.x, self.width);
-        let dy = shortest_diff(source.y, target.y, self.height);
-        if dx.abs() > dy.abs() {
-            if dx < 0 {
-                Dir::West
-            } else {
-                Dir::East
-            }
-        } else {
-            if dy < 0 {
-                Dir::North
-            } else {
-                Dir::South
-            }
-        }
     }
 
     pub fn frames<'a>(&'a self) -> Frames<'a>
@@ -314,50 +191,5 @@ impl Space
     }
 }
 
-pub struct Sweep
-{
-    width: i16,
-    height: i16,
-    x: i16,
-    y: i16,
-}
-
-impl Iterator for Sweep
-{
-    type Item = Pos;
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item>
-    {
-        if self.y < self.height {
-            let p = Pos {
-                x: self.x,
-                y: self.y,
-            };
-            self.x += 1;
-            if self.x == self.width {
-                self.y += 1;
-                self.x = 0;
-            }
-            assert!(self.x < self.width);
-            Some(p)
-        } else {
-            None
-        }
-    }
-}
-
 #[cfg(test)]
-mod test {
-
-    #[test]
-    fn test_space_sweep()
-    {
-        use super::Space;
-        let space = Space::with_dims(3, 5);
-        let mut n = 0;
-        for _ in space.sweep() {
-            n += 1;
-        }
-        assert_eq!(n, 15);
-    }
-}
+mod test { }

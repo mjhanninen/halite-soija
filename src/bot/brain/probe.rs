@@ -17,10 +17,10 @@
 
 use std::num::Wrapping;
 
+use rand::{self, Rng};
+use ua::coord::Coord;
 use ua::io;
 use ua::world::State;
-use ua::space::Pos;
-use rand::{self, Rng};
 
 const ALPHA: f64 = 1000.0;
 const BETA: f64 = 0.125;
@@ -42,18 +42,18 @@ pub fn run()
     let mut state_frame = State::for_environment(&environment);
     connection.recv_state(&environment, &mut state_frame).unwrap();
     connection.send_ready(&environment, "UA_Probe").unwrap();
-    let red_moves = vec![(Pos { x: 0, y: 0 }, None)];
-    let black_moves = vec![(Pos { x: 1, y: 0 }, None)];
+    let red_actions = vec![(Coord { x: 0, y: 0 }, None)];
+    let black_actions = vec![(Coord { x: 1, y: 0 }, None)];
     let mut rng = rand::thread_rng();
     let mut iteration = 0;
     loop {
         iteration += 1;
         connection.recv_state(&environment, &mut state_frame).unwrap();
-        let moves = if tick(iteration, &mut rng) {
-            &red_moves
+        let actions = if tick(iteration, &mut rng) {
+            &red_actions
         } else {
-            &black_moves
+            &black_actions
         };
-        connection.send_moves(moves.iter()).unwrap();
+        connection.send_actions(actions.iter()).unwrap();
     }
 }

@@ -17,9 +17,11 @@
 
 struct Brain;
 
+use ua::action::Action;
+use ua::coord::Coord;
 use ua::io;
-use ua::space::{Pos, Space};
-use ua::world::{Environment, Map, Move, Production, State};
+use ua::space::Space;
+use ua::world::{Environment, Map, Production, State};
 
 fn discounting_convolution(discount_factor: f32,
                            space: &Space,
@@ -74,10 +76,13 @@ impl Brain
                                     &environment.production_map);
     }
 
-    fn tick(&mut self, _environment: &Environment, _state: &State) -> Vec<Move>
+    fn tick(&mut self,
+            _environment: &Environment,
+            _state: &State)
+        -> Vec<Action>
     {
         // To be done
-        vec![(Pos { x: 0, y: 0 }, None)]
+        vec![(Coord { x: 0, y: 0 }, None)]
     }
 }
 
@@ -93,7 +98,7 @@ pub fn run()
               .unwrap();
     loop {
         connection.recv_state(&environment, &mut state_frame).unwrap();
-        let moves = brain.tick(&environment, &state_frame);
-        connection.send_moves(moves.iter()).unwrap();
+        let actions = brain.tick(&environment, &state_frame);
+        connection.send_actions(actions.iter()).unwrap();
     }
 }

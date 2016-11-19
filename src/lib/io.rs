@@ -17,8 +17,9 @@
 
 use std::io::{self, BufRead, Stdin, Stdout, Write};
 
-use space::Dir;
-use world::*;
+use action::Action;
+use dir::Dir;
+use world::{Environment, Production, State, Strength, Tag};
 
 pub struct Connection
 {
@@ -156,8 +157,8 @@ impl Connection
         write!(self.output.lock(), "{}_{}\n", name, environment.my_tag)
             .map_err(Error::from)
     }
-    pub fn send_moves<'a, I>(&mut self, moves: I) -> Result<(), Error>
-        where I: Iterator<Item = &'a Move>
+    pub fn send_actions<'a, I>(&mut self, moves: I) -> Result<(), Error>
+        where I: Iterator<Item = &'a Action>
     {
         let mut count = 0;
         let mut output_handle = self.output.lock();

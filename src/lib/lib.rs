@@ -15,9 +15,10 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod bridge;
+pub mod action;
+pub mod coord;
+pub mod dir;
 pub mod io;
-pub mod map;
 pub mod onion;
 pub mod space;
 pub mod util;

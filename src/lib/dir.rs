@@ -15,48 +15,52 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use space::{Pos, Space};
-
-#[derive(Clone, Debug)]
-pub struct Site
+#[derive(Clone, Copy, Debug)]
+pub enum Dir
 {
-    pub owner: u8,
-    pub strength: u8,
-    pub production: u8,
+    North,
+    East,
+    South,
+    West,
 }
 
-impl Site
+impl Dir
 {
-    pub fn blank() -> Self
+    pub fn dirs() -> Dirs
     {
-        Site {
-            owner: 0,
-            strength: 0,
-            production: 0,
-        }
+        Dirs { d: Some(Dir::North) }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct Map
+pub struct Dirs
 {
-    pub space: Space,
-    pub sites: Vec<Site>,
+    d: Option<Dir>,
 }
 
-impl Map
+impl Iterator for Dirs
 {
-    pub fn from_space(space: Space) -> Self
-    {
-        let sites = vec![Site::blank(); space.len()];
-        Map {
-            space: space,
-            sites: sites,
-        }
-    }
+    type Item = Dir;
 
-    pub fn site(&self, pos: &Pos) -> &Site
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item>
     {
-        &self.sites[self.space.ix(pos)]
+        let d = self.d;
+        match d {
+            Some(Dir::North) => {
+                self.d = Some(Dir::East);
+            }
+            Some(Dir::East) => {
+                self.d = Some(Dir::South);
+            }
+            Some(Dir::South) => {
+                self.d = Some(Dir::West);
+            }
+            Some(Dir::West) => {
+                self.d = None;
+            }
+            None => {}
+        }
+        d
     }
 }

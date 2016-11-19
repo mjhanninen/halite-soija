@@ -15,11 +15,15 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use space::{Dir, Pos, Space};
+use space::Space;
 
 pub type Map<T> = Vec<T>;
 
+pub type Tag = u8;
+
 pub type Production = i16;
+
+pub type Strength = i16;
 
 #[derive(Debug)]
 pub struct Environment
@@ -42,10 +46,6 @@ impl Environment
         }
     }
 }
-
-pub type Tag = u8;
-
-pub type Strength = i16;
 
 #[derive(Clone, Debug)]
 pub struct Occupation
@@ -70,5 +70,3 @@ impl State
         }
     }
 }
-
-pub type Move = (Pos, Option<Dir>);
