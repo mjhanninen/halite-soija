@@ -21,8 +21,8 @@ use std::fs::File;
 use ua::io;
 use ua::map::{Map, Site};
 use ua::space::{Dir, Pos};
-use ua::world::State;
 use ua::util::LoggedUnwrap;
+use ua::world::State;
 
 #[allow(dead_code)]
 fn calc_occupations(map: &Map, who: u8) -> HashSet<Pos>
