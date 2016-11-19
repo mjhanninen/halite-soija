@@ -18,16 +18,32 @@
 #![allow(non_snake_case)]
 
 extern crate getopts;
+extern crate rand;
 extern crate ua;
 
 use std::io::Write;
 use std::env;
+use std::str::FromStr;
 
-mod simple;
+mod brain;
 
 enum Brain
 {
+    Probe,
     Simple,
+}
+
+impl FromStr for Brain
+{
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err>
+    {
+        match s {
+            "probe" => Ok(Brain::Probe),
+            "simple" => Ok(Brain::Simple),
+            _ => Err(format!("no brain with name '{}'", s)),
+        }
+    }
 }
 
 struct Config
@@ -61,6 +77,16 @@ fn parse_options() -> OptionParsing
                 brain: Brain::Simple,
                 log_path: None,
             };
+            if let Some(brain_name) = matches.opt_str("b") {
+                match Brain::from_str(&brain_name) {
+                    Ok(brain) => {
+                        config.brain = brain;
+                    }
+                    Err(_) => {
+                        return OptionParsing::Failed;
+                    }
+                }
+            }
             if let Some(log_path) = matches.opt_str("l") {
                 config.log_path = Some(log_path);
             }
@@ -76,7 +102,8 @@ fn main()
     match parse_options() {
         OptionParsing::Config(config) => {
             match config.brain {
-                Brain::Simple => simple::run()
+                Brain::Probe => brain::probe::run(),
+                Brain::Simple => brain::simple::run(),
             }
         }
         OptionParsing::ShowUsage(usage) => {

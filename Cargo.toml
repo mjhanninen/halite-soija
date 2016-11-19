@@ -15,4 +15,5 @@ path = "src/bot/main.rs"
 name = "MyBot"
 
 [dependencies]
-getopts = "^0.2"
+getopts = "0.2"
+rand = "0.3"
