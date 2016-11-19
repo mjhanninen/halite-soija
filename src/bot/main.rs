@@ -33,6 +33,21 @@ enum Brain
     Simple,
 }
 
+impl Brain
+{
+    #[cfg(feature = "probe")]
+    fn default() -> Self
+    {
+        Brain::Probe
+    }
+
+    #[cfg(not(feature = "probe"))]
+    fn default() -> Self
+    {
+        Brain::Simple
+    }
+}
+
 impl FromStr for Brain
 {
     type Err = String;
@@ -74,7 +89,7 @@ fn parse_options() -> OptionParsing
             OptionParsing::Failed
         } else {
             let mut config = Config {
-                brain: Brain::Simple,
+                brain: Brain::default(),
                 log_path: None,
             };
             if let Some(brain_name) = matches.opt_str("b") {

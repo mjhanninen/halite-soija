@@ -6,6 +6,10 @@ publish = false
 readme = "README.md"
 license-file = "LICENSE.md"
 
+[features]
+default = []
+probe = []
+
 [lib]
 name = "ua"
 path = "src/lib/lib.rs"
