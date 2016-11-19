@@ -18,8 +18,41 @@
 struct Brain;
 
 use ua::io;
-use ua::space::Pos;
-use ua::world::{Environment, Move, State};
+use ua::space::{Pos, Space};
+use ua::world::{Environment, Map, Move, Production, State};
+
+fn discounting_convolution(discount_factor: f32,
+                           space: &Space,
+                           production_map: &Map<Production>)
+    -> Map<f32>
+{
+    assert!(0.0 <= discount_factor && discount_factor <= 1.0);
+    let m = production_map;
+    let mut r = vec![0.0; m.len()];
+    if discount_factor == 0.0 {
+        for p in space.frames() {
+            r[p.ix()] = m[p.ix()] as f32;
+        }
+    } else if discount_factor == 1.0 {
+        let mut s = 0.0;
+        for o in space.frames() {
+            s += m[o.ix()] as f32;
+        }
+        for p in space.frames() {
+            r[p.ix()] = s;
+        }
+    } else {
+        let ln_df = discount_factor.ln();
+        for p in space.frames() {
+            let mut s = 0.0;
+            for o in space.frames() {
+                s += m[o.ix()] as f32 * (ln_df * p.l1_norm(&o) as f32).exp();
+            }
+            r[p.ix()] = s;
+        }
+    }
+    r
+}
 
 impl Brain
 {
@@ -33,9 +66,12 @@ impl Brain
         "LoneExpander"
     }
 
-    fn init(&mut self, _environment: &Environment, _state: &State)
+    fn init(&mut self, environment: &Environment, _state: &State)
     {
-        // To be done
+        let _exploration_values =
+            discounting_convolution(0.5,
+                                    &environment.space,
+                                    &environment.production_map);
     }
 
     fn tick(&mut self, _environment: &Environment, _state: &State) -> Vec<Move>
