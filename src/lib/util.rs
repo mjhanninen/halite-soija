@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::io::Write;
 use std::result::Result;
@@ -38,5 +39,17 @@ impl<T, E> LoggedUnwrap<T> for Result<T, E>
                 panic!();
             }
         }
+    }
+}
+
+#[inline]
+pub fn f32_cmp(a: &f32, b: &f32) -> Ordering
+{
+    if a < b {
+        Ordering::Less
+    } else if b < a {
+        Ordering::Greater
+    } else {
+        Ordering::Equal
     }
 }

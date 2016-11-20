@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::cmp::Ordering;
 use std::f32;
 
 use ua::action::Action;
@@ -23,6 +22,7 @@ use ua::dir::Dir;
 use ua::io;
 use ua::map::Map;
 use ua::space::{Frame, Space};
+use ua::util::f32_cmp;
 use ua::world::{Environment, Occupation, Production, State, Tag};
 
 const DISCOUNT_FACTOR: f32 = 0.5;
@@ -127,18 +127,6 @@ impl Mold
     fn reanimate(&self, _: &Environment, _: &State) -> Brain
     {
         Brain
-    }
-}
-
-#[inline]
-fn f32_cmp(a: &f32, b: &f32) -> Ordering
-{
-    if a < b {
-        Ordering::Less
-    } else if b < a {
-        Ordering::Greater
-    } else {
-        Ordering::Equal
     }
 }
 
