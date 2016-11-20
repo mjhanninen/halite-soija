@@ -30,39 +30,6 @@ const TERRITORY_WEIGHT: f32 = 10.0;
 const DENSITY_WEIGHT: f32 = 10.0;
 const AGGRESSIVITY: f32 = 10.0;
 
-fn calc_exploration_values(discount_factor: f32,
-                           space: &Space,
-                           production_map: &Map<Production>)
-    -> Map<f32>
-{
-    assert!(0.0 <= discount_factor && discount_factor <= 1.0);
-    let m = production_map;
-    let mut r = vec![0.0; m.len()];
-    if discount_factor == 0.0 {
-        for p in space.frames() {
-            r[p.ix()] = m[p.ix()] as f32;
-        }
-    } else if discount_factor == 1.0 {
-        let mut s = 0.0;
-        for o in space.frames() {
-            s += m[o.ix()] as f32;
-        }
-        for p in space.frames() {
-            r[p.ix()] = s;
-        }
-    } else {
-        let ln_df = discount_factor.ln();
-        for p in space.frames() {
-            let mut s = 0.0;
-            for o in space.frames() {
-                s += m[o.ix()] as f32 * (ln_df * p.l1_norm(&o) as f32).exp();
-            }
-            r[p.ix()] = s;
-        }
-    }
-    r
-}
-
 fn calc_density_map(who: Tag,
                     space: &Space,
                     occupations: &Map<Occupation>)
@@ -143,10 +110,7 @@ fn calc_blood_map(who: Tag,
 
 struct Mold;
 
-struct Brain
-{
-    exploration_values: Map<f32>,
-}
+struct Brain;
 
 impl Mold
 {
@@ -160,14 +124,9 @@ impl Mold
         "LoneExpander"
     }
 
-    fn reanimate(&self, environment: &Environment, _: &State) -> Brain
+    fn reanimate(&self, _: &Environment, _: &State) -> Brain
     {
-        Brain {
-            exploration_values:
-                calc_exploration_values(DISCOUNT_FACTOR,
-                                        &environment.space,
-                                        &environment.production_map),
-        }
+        Brain
     }
 }
 
@@ -193,7 +152,6 @@ fn select_cell_action(me: Tag,
                       loc: Frame,
                       state: &State,
                       productions: &Map<Production>,
-                      exploration_values: &Map<f32>,
                       densities: &Map<f32>,
                       ownerships: &Map<f32>,
                       blood: &Map<f32>)
@@ -201,7 +159,6 @@ fn select_cell_action(me: Tag,
 {
     let occupations = &state.occupation_map;
     let o_src = loc.on(&occupations);
-    let v_src = *loc.on(exploration_values);
     let d_src = *loc.on(densities);
     let e_src = *loc.on(ownerships);
     let b_src = *loc.on(blood);
@@ -212,13 +169,12 @@ fn select_cell_action(me: Tag,
     for d in Dir::dirs() {
         let p = loc.adjacent_in(d);
         let o_tgt = p.on(&occupations);
-        let v_tgt = *p.on(exploration_values);
         let d_tgt = *p.on(densities);
         let e_tgt = *p.on(ownerships);
         let b_tgt = *p.on(blood);
         let density_value = -DENSITY_WEIGHT * (d_tgt.powi(4) - d_src.powi(4));
         let prospect_value = TERRITORY_WEIGHT * (e_tgt - e_src);
-                let aggression_change = AGGRESSIVITY * (b_tgt - b_src);
+        let aggression_change = AGGRESSIVITY * (b_tgt - b_src);
         let u = if o_tgt.tag == me {
             if o_src.strength < 5 || o_tgt.strength + o_src.strength > 255 {
                 f32::NEG_INFINITY
@@ -230,16 +186,17 @@ fn select_cell_action(me: Tag,
                 let acquisition_value = *p.on(productions) as f32 *
                                         DISCOUNT_FACTOR *
                                         perpetuity(DISCOUNT_FACTOR);
-                let acquisition_cost = 0.5 * (o_src.strength - o_tgt.strength) as f32;
+                let acquisition_cost = 0.5 *
+                                       (o_src.strength - o_tgt.strength) as f32;
                 let territory_reward = TERRITORY_WEIGHT;
                 let aggression_reward = if o_tgt.tag != 0 {
                     AGGRESSIVITY
                 } else {
                     0.0
                 };
-                acquisition_value - acquisition_cost + territory_reward + prospect_value +
-                density_value + aggression_change +
-                aggression_reward
+                acquisition_value - acquisition_cost + territory_reward +
+                prospect_value + density_value +
+                aggression_change + aggression_reward
             } else {
                 f32::NEG_INFINITY
             }
@@ -277,7 +234,6 @@ impl Brain
                                                 f,
                                                 state,
                                                 &environment.production_map,
-                                                &self.exploration_values,
                                                 &densities,
                                                 &ownerships,
                                                 &blood));
