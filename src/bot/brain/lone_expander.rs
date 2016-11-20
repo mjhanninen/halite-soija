@@ -205,9 +205,10 @@ fn select_cell_action(me: Tag,
     let d_src = *loc.on(densities);
     let e_src = *loc.on(ownerships);
     let b_src = *loc.on(blood);
+    let prod_src = *loc.on(productions) as f32;
     let mut utilities = Vec::with_capacity(5);
     assert!(d_src.is_finite());
-    utilities.push((1.0, None));
+    utilities.push((prod_src, None));
     for d in Dir::dirs() {
         let p = loc.adjacent_in(d);
         let o_tgt = p.on(&occupations);
