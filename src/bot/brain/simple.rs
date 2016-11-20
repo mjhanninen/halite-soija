@@ -20,9 +20,10 @@ use std::fs::File;
 use ua::action::Action;
 use ua::dir::Dir;
 use ua::io;
+use ua::map::Map;
 use ua::space::Frame;
 use ua::util::LoggedUnwrap;
-use ua::world::{Environment, Map, Occupation, State};
+use ua::world::{Environment, Occupation, State};
 
 fn tick_site(origin: &Frame,
              src: &Occupation,

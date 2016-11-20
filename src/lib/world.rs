@@ -15,9 +15,8 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
+use map::Map;
 use space::Space;
-
-pub type Map<T> = Vec<T>;
 
 pub type Tag = u8;
 
