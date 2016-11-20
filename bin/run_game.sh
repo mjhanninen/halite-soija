@@ -3,8 +3,8 @@
 HALITE_DIR=${HALITE_DIR:-../Environment}
 HALITE_EXE=${HALITE_EXE:-$HALITE_DIR/halite}
 
-BOT_1=../$(bin/curry.sh ../target/debug/MyBot)
-BOT_2=../$(bin/curry.sh ../target/debug/MyBot)
+BOT_1=../$(bin/curry.sh ../target/debug/MyBot -b lone_expander)
+BOT_2=../$(bin/curry.sh ../target/debug/MyBot -b simple)
 
 cargo build
 test -d rec || mkdir rec
