@@ -28,19 +28,18 @@ use ua::world::{Environment, Occupation, Production, State, Tag};
 const DISCOUNT_FACTOR: f32 = 0.5;
 const TERRITORY_WEIGHT: f32 = 10.0;
 const DENSITY_WEIGHT: f32 = 10.0;
-const AGGRESSIVITY: f32 = 10.0;
+const AGGRESSIVITY: f32 = 15.0;
 
 fn calc_density_map(who: Tag,
                     space: &Space,
                     occupations: &Map<Occupation>)
     -> Map<f32>
 {
-    let radius = 10;
     let mut densities = vec![0.0; occupations.len()];
     for f in space.frames() {
         let mut df_mass = 0.0;
         let mut pop_mass = 0.0;
-        for g in f.l0_neighbors(radius) {
+        for g in space.frames() {
             let d = f.l1_norm(&g);
             let df = DISCOUNT_FACTOR.powi(d as i32);
             df_mass += df;
@@ -55,7 +54,6 @@ fn calc_density_map(who: Tag,
 }
 
 fn calc_ownership_map(who: Tag,
-                      radius: usize,
                       discount_factor: f32,
                       space: &Space,
                       productions: &Map<Production>,
@@ -65,7 +63,7 @@ fn calc_ownership_map(who: Tag,
     let ln_df = discount_factor.ln();
     let mut ownerships = vec![0.0; occupations.len()];
     for f in space.frames() {
-        let mass = f.l0_neighbors(radius)
+        let mass = space.frames()
                     .map(|g| {
                         let o = g.on(occupations);
                         if o.tag != who {
@@ -83,7 +81,6 @@ fn calc_ownership_map(who: Tag,
 }
 
 fn calc_blood_map(who: Tag,
-                  radius: usize,
                   discount_factor: f32,
                   space: &Space,
                   occupations: &Map<Occupation>)
@@ -92,7 +89,7 @@ fn calc_blood_map(who: Tag,
     let ln_df = discount_factor.ln();
     let mut blood = vec![0.0; occupations.len()];
     for f in space.frames() {
-        let mass = f.l0_neighbors(radius)
+        let mass = space.frames()
                     .map(|g| {
                         let o = g.on(occupations);
                         if o.tag != who && o.tag != 0 {
@@ -204,13 +201,11 @@ impl Brain
         let densities =
             calc_density_map(me, &environment.space, &state.occupation_map);
         let ownerships = calc_ownership_map(me,
-                                            10,
                                             DISCOUNT_FACTOR,
                                             &environment.space,
                                             &environment.production_map,
                                             &state.occupation_map);
         let blood = calc_blood_map(me,
-                                   10,
                                    DISCOUNT_FACTOR,
                                    &environment.space,
                                    &state.occupation_map);
