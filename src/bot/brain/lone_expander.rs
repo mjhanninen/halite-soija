@@ -25,6 +25,8 @@ use ua::space::{Frame, Space};
 use ua::util::f32_cmp;
 use ua::world::{Environment, Occupation, Production, State, Tag};
 
+use params::Params;
+
 const DISCOUNT_FACTOR: f32 = 0.75;
 const TERRITORY_WEIGHT: f32 = 10.0;
 const DENSITY_WEIGHT: f32 = 10.0;
@@ -254,7 +256,7 @@ impl Brain
     }
 }
 
-pub fn run()
+pub fn run(params: &Params)
 {
     let mut connection = io::Connection::new();
     let environment = connection.recv_environment().unwrap();

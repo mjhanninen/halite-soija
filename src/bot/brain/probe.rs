@@ -22,6 +22,8 @@ use ua::coord::Coord;
 use ua::io;
 use ua::world::State;
 
+use params::Params;
+
 const ALPHA: f64 = 1000.0;
 const BETA: f64 = 0.125;
 
@@ -35,7 +37,7 @@ fn tick<R: Rng>(iteration: i32, rng: &mut R) -> bool
     path.0 & 1 == 0
 }
 
-pub fn run()
+pub fn run(_: &Params)
 {
     let mut connection = io::Connection::new();
     let environment = connection.recv_environment().unwrap();

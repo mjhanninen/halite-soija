@@ -21,11 +21,13 @@ extern crate getopts;
 extern crate rand;
 extern crate ua;
 
-use std::io::Write;
+use std::collections::BTreeMap;
 use std::env;
+use std::io::Write;
 use std::str::FromStr;
 
 mod brain;
+mod params;
 
 enum Brain
 {
@@ -64,71 +66,80 @@ struct Config
 {
     brain: Brain,
     log_path: Option<String>,
+    params: params::Params,
 }
 
 enum OptionParsing
 {
     ShowUsage(String),
-    Failed,
     Config(Config),
 }
 
-fn parse_options() -> OptionParsing
+fn parse_free(free: &str) -> Result<(String, f32), &'static str>
 {
-    let mut opts = getopts::Options::new();
-    opts.optflag("h", "help", "Display this usage information")
+    static ERR_MSG: &'static str = "invalid extra argument (should be of form \
+                                    KEY=VALUE)";
+    let mut s = free.split('=');
+    let k = try!(s.next().ok_or(ERR_MSG));
+    let v = try!(s.next().ok_or(ERR_MSG));
+    let n = try!(v.parse::<f32>().map_err(|_| ERR_MSG));
+    if s.next().is_none() {
+        Ok((k.to_owned(), n))
+    } else {
+        Err(ERR_MSG)
+    }
+}
+
+fn parse_options() -> Result<OptionParsing, String>
+{
+    use getopts::{Options, ParsingStyle};
+    let mut opts = Options::new();
+    opts.parsing_style(ParsingStyle::StopAtFirstFree)
+        .optflag("h", "help", "Display this usage information")
         .optopt("b", "brain", "Select the bot brain to use", "NAME")
         .optopt("l", "log", "Produce log of internal events to file", "FILE");
     let args = env::args().collect::<Vec<String>>();
     if let Ok(matches) = opts.parse(&args[1..]) {
         if matches.opt_present("h") {
             let brief = format!("usage: {} [ options ]", args[0]);
-            OptionParsing::ShowUsage(opts.usage(&brief))
-        } else if !matches.free.is_empty() {
-            OptionParsing::Failed
+            Ok(OptionParsing::ShowUsage(opts.usage(&brief)))
         } else {
-            let mut config = Config {
-                brain: Brain::default(),
-                log_path: None,
+            let config = Config {
+                brain: match matches.opt_str("b") {
+                    Some(brain_name) => try!(Brain::from_str(&brain_name)),
+                    None => Brain::default(),
+                },
+                log_path: matches.opt_str("l"),
+                params: try!(matches.free.iter()
+                             .map(|f| parse_free(&f))
+                             .collect::<Result<BTreeMap<String, f32>, _>>()
+                             .map_err(|s| s.to_owned())),
             };
-            if let Some(brain_name) = matches.opt_str("b") {
-                match Brain::from_str(&brain_name) {
-                    Ok(brain) => {
-                        config.brain = brain;
-                    }
-                    Err(_) => {
-                        return OptionParsing::Failed;
-                    }
-                }
-            }
-            if let Some(log_path) = matches.opt_str("l") {
-                config.log_path = Some(log_path);
-            }
-            OptionParsing::Config(config)
+            Ok(OptionParsing::Config(config))
         }
     } else {
-        OptionParsing::Failed
+        Err("bad command line (try -h for help)".to_owned())
     }
 }
 
 fn main()
 {
     match parse_options() {
-        OptionParsing::Config(config) => {
+        Ok(OptionParsing::Config(config)) => {
             match config.brain {
-                Brain::LoneExpander => brain::lone_expander::run(),
-                Brain::Probe => brain::probe::run(),
-                Brain::Simple => brain::simple::run(),
+                Brain::LoneExpander => {
+                    brain::lone_expander::run(&config.params)
+                }
+                Brain::Probe => brain::probe::run(&config.params),
+                Brain::Simple => brain::simple::run(&config.params),
             }
         }
-        OptionParsing::ShowUsage(usage) => {
+        Ok(OptionParsing::ShowUsage(usage)) => {
             println!("{}", usage);
             std::process::exit(0);
         }
-        OptionParsing::Failed => {
-            writeln!(std::io::stderr(),
-                     "Error: Bad command line (try -h for help)")
-                .unwrap();
+        Err(why) => {
+            writeln!(std::io::stderr(), "Error: {}", why).unwrap();
             std::process::exit(1);
         }
     }

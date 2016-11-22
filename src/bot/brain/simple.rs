@@ -25,6 +25,8 @@ use ua::space::Frame;
 use ua::util::LoggedUnwrap;
 use ua::world::{Environment, Occupation, State};
 
+use params::Params;
+
 fn tick_site(origin: &Frame,
              src: &Occupation,
              occupations: &Map<Occupation>,
@@ -66,7 +68,7 @@ fn tick(environment: &Environment, state: &State) -> Vec<Action>
     actions
 }
 
-pub fn run()
+pub fn run(_: &Params)
 {
     let mut log_file = File::create("runtime.log").unwrap();
     let mut connection = io::Connection::new();
