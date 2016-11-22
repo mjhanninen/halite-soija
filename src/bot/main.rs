@@ -62,6 +62,7 @@ impl FromStr for Brain
     }
 }
 
+#[allow(dead_code)]
 struct Config
 {
     brain: Brain,

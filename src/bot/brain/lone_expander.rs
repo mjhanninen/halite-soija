@@ -27,10 +27,11 @@ use ua::world::{Environment, Occupation, Production, State, Tag};
 
 use params::Params;
 
-const DISCOUNT_FACTOR: f32 = 0.75;
-const TERRITORY_WEIGHT: f32 = 10.0;
-const DENSITY_WEIGHT: f32 = 10.0;
-const AGGRESSIVITY: f32 = 15.0;
+const DEFAULT_DISCOUNT_FACTOR: f32 = 0.75;
+const DEFAULT_EXPANSION_WEIGHT: f32 = 10.0;
+const DEFAULT_AGGRESSION_WEIGHT: f32 = 15.0;
+const DEFAULT_DENSITY_WEIGHT: f32 = 10.0;
+const DEFAULT_MINIMUM_MOVABLE_STRENGTH: f32 = 5.0;
 
 const MAX_STR: f32 = 255.0;
 
@@ -44,84 +45,16 @@ fn f32_max(a: f32, b: f32) -> f32
     }
 }
 
-fn calc_density_map(who: Tag,
-                    space: &Space,
-                    occupations: &Map<Occupation>)
-    -> Map<f32>
-{
-    let mut densities = vec![0.0; occupations.len()];
-    for f in space.frames() {
-        let mut df_mass = 0.0;
-        let mut pop_mass = 0.0;
-        for g in space.frames() {
-            let d = f.l1_norm(&g);
-            let df = DISCOUNT_FACTOR.powi(d as i32);
-            df_mass += df;
-            let o = g.on(occupations);
-            if o.tag == who {
-                pop_mass += df * o.strength as f32 / 255.0;
-            }
-        }
-        *f.on_mut(&mut densities) = pop_mass / df_mass;
-    }
-    densities
-}
-
-fn calc_ownership_map(who: Tag,
-                      discount_factor: f32,
-                      space: &Space,
-                      productions: &Map<Production>,
-                      occupations: &Map<Occupation>)
-    -> Map<f32>
-{
-    let ln_df = discount_factor.ln();
-    let mut ownerships = vec![0.0; occupations.len()];
-    for f in space.frames() {
-        let mass = space.frames()
-                        .map(|g| {
-                            let o = g.on(occupations);
-                            if o.tag != who {
-                                *g.on(productions) as f32 *
-                                (f.l1_norm(&g) as f32 * ln_df).exp() *
-                                perpetuity(discount_factor)
-                            } else {
-                                0.0
-                            }
-                        })
-                        .sum();
-        *f.on_mut(&mut ownerships) = mass;
-    }
-    ownerships
-}
-
-fn calc_blood_map(who: Tag,
-                  discount_factor: f32,
-                  space: &Space,
-                  occupations: &Map<Occupation>)
-    -> Map<f32>
-{
-    let ln_df = discount_factor.ln();
-    let mut blood = vec![0.0; occupations.len()];
-    for f in space.frames() {
-        let mass = space.frames()
-                        .map(|g| {
-                            let o = g.on(occupations);
-                            if o.tag != who && o.tag != 0 {
-                                (f.l1_norm(&g) as f32 * ln_df).exp()
-                            } else {
-                                0.0
-                            }
-                        })
-                        .sum();
-        *f.on_mut(&mut blood) = mass;
-    }
-    blood
-}
-
-
 struct Mold;
 
-struct Brain;
+struct Brain
+{
+    aggression_weight: f32,
+    density_weight: f32,
+    discount_factor: f32,
+    expansion_weight: f32,
+    minimum_movable_strength: f32,
+}
 
 impl Mold
 {
@@ -135,9 +68,21 @@ impl Mold
         "LoneExpander"
     }
 
-    fn reanimate(&self, _: &Environment, _: &State) -> Brain
+    fn reanimate(&self, params: &Params, _: &Environment, _: &State) -> Brain
     {
-        Brain
+        Brain {
+            aggression_weight: *params.get("aggression_weight")
+                                      .unwrap_or(&DEFAULT_AGGRESSION_WEIGHT),
+            density_weight: *params.get("density_weight")
+                                   .unwrap_or(&DEFAULT_DENSITY_WEIGHT),
+            discount_factor: *params.get("discount_factor")
+                                    .unwrap_or(&DEFAULT_DISCOUNT_FACTOR),
+            expansion_weight: *params.get("expansion_weight")
+                                     .unwrap_or(&DEFAULT_EXPANSION_WEIGHT),
+            minimum_movable_strength:
+                *params.get("minimum_movable_strength")
+                       .unwrap_or(&DEFAULT_MINIMUM_MOVABLE_STRENGTH),
+        }
     }
 }
 
@@ -155,101 +100,185 @@ struct Choice<'a>
     utility: f32,
 }
 
-fn select_cell_action(me: Tag,
-                      loc: Frame,
-                      state: &State,
-                      productions: &Map<Production>,
-                      densities: &Map<f32>,
-                      ownerships: &Map<f32>,
-                      blood: &Map<f32>)
-    -> Action
-{
-    let occupations = &state.occupation_map;
-    let o_src = loc.on(&occupations);
-    let d_src = *loc.on(densities);
-    let e_src = *loc.on(ownerships);
-    let b_src = *loc.on(blood);
-    let str_src = o_src.strength as f32;
-    let prod_src = *loc.on(productions) as f32;
-    let mut utilities = Vec::with_capacity(5);
-    assert!(d_src.is_finite());
-    // Utility for staying put
-    {
-        let utility = 10.0 * prod_src * ((MAX_STR - str_src) / MAX_STR).powi(4);
-        utilities.push((utility, None));
-    }
-    // Utilities for moving
-    for d in Dir::dirs() {
-        let p = loc.adjacent_in(d);
-        let o_tgt = p.on(&occupations);
-        let d_tgt = *p.on(densities);
-        let e_tgt = *p.on(ownerships);
-        let b_tgt = *p.on(blood);
-        let str_tgt = o_tgt.strength as f32;
-        let density_value = -DENSITY_WEIGHT * (d_tgt.powi(4) - d_src.powi(4));
-        let prospect_value = TERRITORY_WEIGHT * (e_tgt - e_src);
-        let aggression_change = AGGRESSIVITY * (b_tgt - b_src);
-        let u = if o_tgt.tag == me {
-            if str_src < 5.0 {
-                f32::NEG_INFINITY
-            } else {
-                prospect_value + density_value + aggression_change -
-                f32_max(0.0, str_tgt + str_src - MAX_STR)
-            }
-        } else {
-            if o_tgt.strength < o_src.strength {
-                let acquisition_value = *p.on(productions) as f32 *
-                                        DISCOUNT_FACTOR *
-                                        perpetuity(DISCOUNT_FACTOR);
-                let acquisition_cost = 0.5 *
-                                       (o_src.strength - o_tgt.strength) as f32;
-                let territory_reward = TERRITORY_WEIGHT;
-                let aggression_reward = if o_tgt.tag != 0 {
-                    AGGRESSIVITY
-                } else {
-                    0.0
-                };
-                acquisition_value - acquisition_cost + territory_reward +
-                prospect_value + density_value +
-                aggression_change + aggression_reward
-            } else {
-                f32::NEG_INFINITY
-            }
-        };
-        utilities.push((u, Some(d)));
-    }
-    utilities.sort_by(|a, b| f32_cmp(&b.0, &a.0));
-    assert!(utilities[0].0.is_finite());
-    (loc.coord(), utilities[0].1)
-}
-
 impl Brain
 {
+    fn calc_density_map(&self,
+                        who: Tag,
+                        space: &Space,
+                        occupations: &Map<Occupation>)
+        -> Map<f32>
+    {
+        let mut densities = vec![0.0; occupations.len()];
+        for f in space.frames() {
+            let mut df_mass = 0.0;
+            let mut pop_mass = 0.0;
+            for g in space.frames() {
+                let d = f.l1_norm(&g);
+                let df = self.discount_factor.powi(d as i32);
+                df_mass += df;
+                let o = g.on(occupations);
+                if o.tag == who {
+                    pop_mass += df * o.strength as f32 / 255.0;
+                }
+            }
+            *f.on_mut(&mut densities) = pop_mass / df_mass;
+        }
+        densities
+    }
+
+    fn calc_ownership_map(&self,
+                          who: Tag,
+                          discount_factor: f32,
+                          space: &Space,
+                          productions: &Map<Production>,
+                          occupations: &Map<Occupation>)
+        -> Map<f32>
+    {
+        let ln_df = discount_factor.ln();
+        let mut ownerships = vec![0.0; occupations.len()];
+        for f in space.frames() {
+            let mass = space.frames()
+                            .map(|g| {
+                                let o = g.on(occupations);
+                                if o.tag != who {
+                                    *g.on(productions) as f32 *
+                                    (f.l1_norm(&g) as f32 * ln_df).exp() *
+                                    perpetuity(discount_factor)
+                                } else {
+                                    0.0
+                                }
+                            })
+                            .sum();
+            *f.on_mut(&mut ownerships) = mass;
+        }
+        ownerships
+    }
+
+    fn calc_blood_map(&self,
+                      who: Tag,
+                      discount_factor: f32,
+                      space: &Space,
+                      occupations: &Map<Occupation>)
+        -> Map<f32>
+    {
+        let ln_df = discount_factor.ln();
+        let mut blood = vec![0.0; occupations.len()];
+        for f in space.frames() {
+            let mass = space.frames()
+                            .map(|g| {
+                                let o = g.on(occupations);
+                                if o.tag != who && o.tag != 0 {
+                                    (f.l1_norm(&g) as f32 * ln_df).exp()
+                                } else {
+                                    0.0
+                                }
+                            })
+                            .sum();
+            *f.on_mut(&mut blood) = mass;
+        }
+        blood
+    }
+
+    fn select_cell_action(&self,
+                          me: Tag,
+                          loc: Frame,
+                          state: &State,
+                          productions: &Map<Production>,
+                          densities: &Map<f32>,
+                          ownerships: &Map<f32>,
+                          blood: &Map<f32>)
+        -> Action
+    {
+        let occupations = &state.occupation_map;
+        let o_src = loc.on(&occupations);
+        let d_src = *loc.on(densities);
+        let e_src = *loc.on(ownerships);
+        let b_src = *loc.on(blood);
+        let str_src = o_src.strength as f32;
+        let prod_src = *loc.on(productions) as f32;
+        let mut utilities = Vec::with_capacity(5);
+        assert!(d_src.is_finite());
+        // Utility for staying put
+        {
+            let utility = 10.0 * prod_src *
+                          ((MAX_STR - str_src) / MAX_STR).powi(4);
+            utilities.push((utility, None));
+        }
+        // Utilities for moving
+        for d in Dir::dirs() {
+            let p = loc.adjacent_in(d);
+            let o_tgt = p.on(&occupations);
+            let d_tgt = *p.on(densities);
+            let e_tgt = *p.on(ownerships);
+            let b_tgt = *p.on(blood);
+            let str_tgt = o_tgt.strength as f32;
+            let density_value = -self.density_weight *
+                                (d_tgt.powi(4) - d_src.powi(4));
+            let prospect_value = self.expansion_weight * (e_tgt - e_src);
+            let aggression_change = self.aggression_weight * (b_tgt - b_src);
+            let u = if o_tgt.tag == me {
+                if str_src < self.minimum_movable_strength {
+                    f32::NEG_INFINITY
+                } else {
+                    prospect_value + density_value + aggression_change -
+                    f32_max(0.0, str_tgt + str_src - MAX_STR)
+                }
+            } else {
+                if o_tgt.strength < o_src.strength {
+                    let acquisition_value = *p.on(productions) as f32 *
+                                            self.discount_factor *
+                                            perpetuity(self.discount_factor);
+                    let acquisition_cost =
+                        0.5 * (o_src.strength - o_tgt.strength) as f32;
+                    let territory_reward = self.expansion_weight;
+                    let aggression_reward = if o_tgt.tag != 0 {
+                        self.aggression_weight
+                    } else {
+                        0.0
+                    };
+                    acquisition_value - acquisition_cost + territory_reward +
+                    prospect_value +
+                    density_value + aggression_change +
+                    aggression_reward
+                } else {
+                    f32::NEG_INFINITY
+                }
+            };
+            utilities.push((u, Some(d)));
+        }
+        utilities.sort_by(|a, b| f32_cmp(&b.0, &a.0));
+        assert!(utilities[0].0.is_finite());
+        (loc.coord(), utilities[0].1)
+    }
+
+
+
     fn tick(&mut self, environment: &Environment, state: &State) -> Vec<Action>
     {
         let me = environment.my_tag;
-        let densities =
-            calc_density_map(me, &environment.space, &state.occupation_map);
-        let ownerships = calc_ownership_map(me,
-                                            DISCOUNT_FACTOR,
-                                            &environment.space,
-                                            &environment.production_map,
-                                            &state.occupation_map);
-        let blood = calc_blood_map(me,
-                                   DISCOUNT_FACTOR,
-                                   &environment.space,
-                                   &state.occupation_map);
+        let densities = self.calc_density_map(me,
+                                              &environment.space,
+                                              &state.occupation_map);
+        let ownerships = self.calc_ownership_map(me,
+                                                 self.discount_factor,
+                                                 &environment.space,
+                                                 &environment.production_map,
+                                                 &state.occupation_map);
+        let blood = self.calc_blood_map(me,
+                                        self.discount_factor,
+                                        &environment.space,
+                                        &state.occupation_map);
         let mut actions = vec![];
         for f in environment.space.frames() {
             let source = f.on(&state.occupation_map);
             if source.tag == me {
-                actions.push(select_cell_action(me,
-                                                f,
-                                                state,
-                                                &environment.production_map,
-                                                &densities,
-                                                &ownerships,
-                                                &blood));
+                actions.push(self.select_cell_action(me,
+                                                     f,
+                                                     state,
+                                                     &environment.production_map,
+                                                     &densities,
+                                                     &ownerships,
+                                                     &blood));
             }
         }
         actions
@@ -263,7 +292,7 @@ pub fn run(params: &Params)
     let mut state_frame = State::for_environment(&environment);
     connection.recv_state(&environment, &mut state_frame).unwrap();
     let mold = Mold::new();
-    let mut brain = mold.reanimate(&environment, &state_frame);
+    let mut brain = mold.reanimate(params, &environment, &state_frame);
     connection.send_ready(&environment, &format!("UA_{}", mold.name()))
               .unwrap();
     loop {
