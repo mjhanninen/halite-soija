@@ -25,10 +25,22 @@ use ua::space::{Frame, Space};
 use ua::util::f32_cmp;
 use ua::world::{Environment, Occupation, Production, State, Tag};
 
-const DISCOUNT_FACTOR: f32 = 0.5;
+const DISCOUNT_FACTOR: f32 = 0.75;
 const TERRITORY_WEIGHT: f32 = 10.0;
 const DENSITY_WEIGHT: f32 = 10.0;
 const AGGRESSIVITY: f32 = 15.0;
+
+const MAX_STR: f32 = 255.0;
+
+#[inline]
+fn f32_max(a: f32, b: f32) -> f32
+{
+    if a >= b {
+        a
+    } else {
+        b
+    }
+}
 
 fn calc_density_map(who: Tag,
                     space: &Space,
@@ -64,17 +76,17 @@ fn calc_ownership_map(who: Tag,
     let mut ownerships = vec![0.0; occupations.len()];
     for f in space.frames() {
         let mass = space.frames()
-                    .map(|g| {
-                        let o = g.on(occupations);
-                        if o.tag != who {
-                            *g.on(productions) as f32 *
-                            (f.l1_norm(&g) as f32 * ln_df).exp() *
-                            perpetuity(discount_factor)
-                        } else {
-                            0.0
-                        }
-                    })
-                    .sum();
+                        .map(|g| {
+                            let o = g.on(occupations);
+                            if o.tag != who {
+                                *g.on(productions) as f32 *
+                                (f.l1_norm(&g) as f32 * ln_df).exp() *
+                                perpetuity(discount_factor)
+                            } else {
+                                0.0
+                            }
+                        })
+                        .sum();
         *f.on_mut(&mut ownerships) = mass;
     }
     ownerships
@@ -90,15 +102,15 @@ fn calc_blood_map(who: Tag,
     let mut blood = vec![0.0; occupations.len()];
     for f in space.frames() {
         let mass = space.frames()
-                    .map(|g| {
-                        let o = g.on(occupations);
-                        if o.tag != who && o.tag != 0 {
-                            (f.l1_norm(&g) as f32 * ln_df).exp()
-                        } else {
-                            0.0
-                        }
-                    })
-                    .sum();
+                        .map(|g| {
+                            let o = g.on(occupations);
+                            if o.tag != who && o.tag != 0 {
+                                (f.l1_norm(&g) as f32 * ln_df).exp()
+                            } else {
+                                0.0
+                            }
+                        })
+                        .sum();
         *f.on_mut(&mut blood) = mass;
     }
     blood
@@ -133,6 +145,14 @@ fn perpetuity(discount_factor: f32) -> f32
     1.0 / (1.0 - discount_factor)
 }
 
+#[allow(dead_code)]
+struct Choice<'a>
+{
+    source: Frame<'a>,
+    target: Frame<'a>,
+    utility: f32,
+}
+
 fn select_cell_action(me: Tag,
                       loc: Frame,
                       state: &State,
@@ -147,24 +167,32 @@ fn select_cell_action(me: Tag,
     let d_src = *loc.on(densities);
     let e_src = *loc.on(ownerships);
     let b_src = *loc.on(blood);
+    let str_src = o_src.strength as f32;
     let prod_src = *loc.on(productions) as f32;
     let mut utilities = Vec::with_capacity(5);
     assert!(d_src.is_finite());
-    utilities.push((prod_src, None));
+    // Utility for staying put
+    {
+        let utility = 10.0 * prod_src * ((MAX_STR - str_src) / MAX_STR).powi(4);
+        utilities.push((utility, None));
+    }
+    // Utilities for moving
     for d in Dir::dirs() {
         let p = loc.adjacent_in(d);
         let o_tgt = p.on(&occupations);
         let d_tgt = *p.on(densities);
         let e_tgt = *p.on(ownerships);
         let b_tgt = *p.on(blood);
+        let str_tgt = o_tgt.strength as f32;
         let density_value = -DENSITY_WEIGHT * (d_tgt.powi(4) - d_src.powi(4));
         let prospect_value = TERRITORY_WEIGHT * (e_tgt - e_src);
         let aggression_change = AGGRESSIVITY * (b_tgt - b_src);
         let u = if o_tgt.tag == me {
-            if o_src.strength < 5 || o_tgt.strength + o_src.strength > 255 {
+            if str_src < 5.0 {
                 f32::NEG_INFINITY
             } else {
-                prospect_value + density_value + aggression_change
+                prospect_value + density_value + aggression_change -
+                f32_max(0.0, str_tgt + str_src - MAX_STR)
             }
         } else {
             if o_tgt.strength < o_src.strength {
