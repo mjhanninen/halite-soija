@@ -284,6 +284,16 @@ impl Space
             stop: self.sz,
         }
     }
+
+    pub fn width(&self) -> i16
+    {
+        self.w as i16
+    }
+
+    pub fn height(&self) -> i16
+    {
+        self.h as i16
+    }
 }
 
 #[cfg(test)]

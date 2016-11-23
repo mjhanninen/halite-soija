@@ -15,8 +15,13 @@ name = "ua"
 path = "src/lib/lib.rs"
 
 [[bin]]
-path = "src/bot/main.rs"
 name = "MyBot"
+path = "src/bot/main.rs"
+
+[[bin]]
+name = "runner"
+path = "src/runner/main.rs"
+
 
 [dependencies]
 getopts = "0.2"
