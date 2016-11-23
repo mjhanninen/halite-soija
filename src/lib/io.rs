@@ -103,12 +103,8 @@ impl Connection
         }
         Ok(environment)
     }
-    pub fn recv_state(&mut self,
-                      environment: &Environment,
-                      state: &mut State)
-        -> Result<(), Error>
+    pub fn recv_state(&mut self, state: &mut State) -> Result<(), Error>
     {
-        assert_eq!(state.occupation_map.len(), environment.space.len());
         try!(self.recv_string());
         let mut parts = self.buffer.trim_right().split(" ");
         // Occupiers
@@ -149,13 +145,9 @@ impl Connection
         }
         Ok(())
     }
-    pub fn send_ready(&mut self,
-                      environment: &Environment,
-                      name: &str)
-        -> Result<(), Error>
+    pub fn send_ready(&mut self, my_tag: &Tag, name: &str) -> Result<(), Error>
     {
-        write!(self.output.lock(), "{}_{}\n", name, environment.my_tag)
-            .map_err(Error::from)
+        write!(self.output.lock(), "{}_{}\n", name, my_tag).map_err(Error::from)
     }
     pub fn send_actions<'a, I>(&mut self, moves: I) -> Result<(), Error>
         where I: Iterator<Item = &'a Action>

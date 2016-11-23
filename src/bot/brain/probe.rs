@@ -42,15 +42,15 @@ pub fn run(_: &Params)
     let mut connection = io::Connection::new();
     let environment = connection.recv_environment().unwrap();
     let mut state_frame = State::for_environment(&environment);
-    connection.recv_state(&environment, &mut state_frame).unwrap();
-    connection.send_ready(&environment, "UA_Probe").unwrap();
+    connection.recv_state(&mut state_frame).unwrap();
+    connection.send_ready(&environment.my_tag, "UA_Probe").unwrap();
     let red_actions = vec![(Coord { x: 0, y: 0 }, None)];
     let black_actions = vec![(Coord { x: 1, y: 0 }, None)];
     let mut rng = rand::thread_rng();
     let mut iteration = 0;
     loop {
         iteration += 1;
-        connection.recv_state(&environment, &mut state_frame).unwrap();
+        connection.recv_state(&mut state_frame).unwrap();
         let actions = if tick(iteration, &mut rng) {
             &red_actions
         } else {

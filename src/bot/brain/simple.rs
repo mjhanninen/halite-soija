@@ -75,13 +75,13 @@ pub fn run(_: &Params)
     let environment = connection.recv_environment()
                                 .unwrap_or_log(&mut log_file);
     let mut state_frame = State::for_environment(&environment);
-    connection.recv_state(&environment, &mut state_frame)
+    connection.recv_state(&mut state_frame)
               .unwrap_or_log(&mut log_file);
     // You've got 15 seconds to spare on this line. Use it well.
-    connection.send_ready(&environment, "UmpteenthAnion")
+    connection.send_ready(&environment.my_tag, "UmpteenthAnion")
               .unwrap_or_log(&mut log_file);
     loop {
-        connection.recv_state(&environment, &mut state_frame)
+        connection.recv_state(&mut state_frame)
                   .unwrap_or_log(&mut log_file);
         let actions = tick(&environment, &state_frame);
         connection.send_actions(actions.iter())

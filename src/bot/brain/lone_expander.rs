@@ -21,9 +21,9 @@ use ua::action::Action;
 use ua::dir::Dir;
 use ua::io;
 use ua::map::Map;
-use ua::space::{Frame, Space};
+use ua::space::Frame;
 use ua::util::f32_cmp;
-use ua::world::{Environment, Occupation, Production, State, Tag};
+use ua::world::{Environment, Occupation, State, Tag};
 
 use params::Params;
 
@@ -49,6 +49,9 @@ struct Mold;
 
 struct Brain
 {
+    // Static environment
+    environment: Environment,
+    // Parameters
     aggression_weight: f32,
     density_weight: f32,
     discount_factor: f32,
@@ -68,9 +71,14 @@ impl Mold
         "LoneExpander"
     }
 
-    fn reanimate(&self, params: &Params, _: &Environment, _: &State) -> Brain
+    fn reanimate(&self,
+                 params: &Params,
+                 environment: Environment,
+                 _: &State)
+        -> Brain
     {
         Brain {
+            environment: environment,
             aggression_weight: *params.get("aggression_weight")
                                       .unwrap_or(&DEFAULT_AGGRESSION_WEIGHT),
             density_weight: *params.get("density_weight")
@@ -104,15 +112,14 @@ impl Brain
 {
     fn calc_density_map(&self,
                         who: Tag,
-                        space: &Space,
                         occupations: &Map<Occupation>)
         -> Map<f32>
     {
         let mut densities = vec![0.0; occupations.len()];
-        for f in space.frames() {
+        for f in self.environment.space.frames() {
             let mut df_mass = 0.0;
             let mut pop_mass = 0.0;
-            for g in space.frames() {
+            for g in self.environment.space.frames() {
                 let d = f.l1_norm(&g);
                 let df = self.discount_factor.powi(d as i32);
                 df_mass += df;
@@ -129,11 +136,11 @@ impl Brain
     fn calc_ownership_map(&self,
                           who: Tag,
                           discount_factor: f32,
-                          space: &Space,
-                          productions: &Map<Production>,
                           occupations: &Map<Occupation>)
         -> Map<f32>
     {
+        let space = &self.environment.space;
+        let productions = &self.environment.production_map;
         let ln_df = discount_factor.ln();
         let mut ownerships = vec![0.0; occupations.len()];
         for f in space.frames() {
@@ -157,10 +164,10 @@ impl Brain
     fn calc_blood_map(&self,
                       who: Tag,
                       discount_factor: f32,
-                      space: &Space,
                       occupations: &Map<Occupation>)
         -> Map<f32>
     {
+        let space = &self.environment.space;
         let ln_df = discount_factor.ln();
         let mut blood = vec![0.0; occupations.len()];
         for f in space.frames() {
@@ -180,15 +187,15 @@ impl Brain
     }
 
     fn select_cell_action(&self,
-                          me: Tag,
+                          who: Tag,
                           loc: Frame,
                           state: &State,
-                          productions: &Map<Production>,
                           densities: &Map<f32>,
                           ownerships: &Map<f32>,
                           blood: &Map<f32>)
         -> Action
     {
+        let productions = &self.environment.production_map;
         let occupations = &state.occupation_map;
         let o_src = loc.on(&occupations);
         let d_src = *loc.on(densities);
@@ -216,7 +223,7 @@ impl Brain
                                 (d_tgt.powi(4) - d_src.powi(4));
             let prospect_value = self.expansion_weight * (e_tgt - e_src);
             let aggression_change = self.aggression_weight * (b_tgt - b_src);
-            let u = if o_tgt.tag == me {
+            let u = if o_tgt.tag == who {
                 if str_src < self.minimum_movable_strength {
                     f32::NEG_INFINITY
                 } else {
@@ -251,31 +258,30 @@ impl Brain
         (loc.coord(), utilities[0].1)
     }
 
-
-
-    fn tick(&mut self, environment: &Environment, state: &State) -> Vec<Action>
+    #[inline]
+    fn me(&self) -> Tag
     {
-        let me = environment.my_tag;
-        let densities = self.calc_density_map(me,
-                                              &environment.space,
-                                              &state.occupation_map);
-        let ownerships = self.calc_ownership_map(me,
+        self.environment.my_tag
+    }
+
+    fn tick(&mut self, state: &State) -> Vec<Action>
+    {
+        let densities = self.calc_density_map(self.me(), &state.occupation_map);
+        let ownerships = self.calc_ownership_map(self.me(),
                                                  self.discount_factor,
-                                                 &environment.space,
-                                                 &environment.production_map,
                                                  &state.occupation_map);
-        let blood = self.calc_blood_map(me,
+        let blood = self.calc_blood_map(self.me(),
                                         self.discount_factor,
-                                        &environment.space,
                                         &state.occupation_map);
         let mut actions = vec![];
-        for f in environment.space.frames() {
+        for f in self.environment
+                     .space
+                     .frames() {
             let source = f.on(&state.occupation_map);
-            if source.tag == me {
-                actions.push(self.select_cell_action(me,
+            if source.tag == self.me() {
+                actions.push(self.select_cell_action(self.me(),
                                                      f,
                                                      state,
-                                                     &environment.production_map,
                                                      &densities,
                                                      &ownerships,
                                                      &blood));
@@ -290,14 +296,15 @@ pub fn run(params: &Params)
     let mut connection = io::Connection::new();
     let environment = connection.recv_environment().unwrap();
     let mut state_frame = State::for_environment(&environment);
-    connection.recv_state(&environment, &mut state_frame).unwrap();
+    connection.recv_state(&mut state_frame).unwrap();
     let mold = Mold::new();
-    let mut brain = mold.reanimate(params, &environment, &state_frame);
-    connection.send_ready(&environment, &format!("UA_{}", mold.name()))
+    let my_tag = environment.my_tag;
+    let mut brain = mold.reanimate(params, environment, &state_frame);
+    connection.send_ready(&my_tag, &format!("UA_{}", mold.name()))
               .unwrap();
     loop {
-        connection.recv_state(&environment, &mut state_frame).unwrap();
-        let actions = brain.tick(&environment, &state_frame);
+        connection.recv_state(&mut state_frame).unwrap();
+        let actions = brain.tick(&state_frame);
         connection.send_actions(actions.iter()).unwrap();
     }
 }
