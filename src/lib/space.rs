@@ -52,9 +52,6 @@ pub struct Space
     sz: u16,
     w: u16,
     h: u16,
-    // These are going out of the door; don't increase their use.
-    pub width: i16,
-    pub height: i16,
 }
 
 #[derive(Clone, Debug)]
@@ -268,8 +265,6 @@ impl Space
             sz: width as u16 * height as u16,
             w: width as u16,
             h: height as u16,
-            width: width,
-            height: height,
         }
     }
 
@@ -278,7 +273,7 @@ impl Space
     #[inline]
     pub fn len(&self) -> usize
     {
-        self.width as usize * self.height as usize
+        self.w as usize * self.h as usize
     }
 
     pub fn frames<'a>(&'a self) -> Frames<'a>
@@ -309,6 +304,4 @@ mod test {
             }
         }
     }
-
-
 }
