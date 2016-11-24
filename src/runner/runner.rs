@@ -21,7 +21,7 @@ use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::string::String;
 
@@ -31,6 +31,7 @@ use ua::space::Space;
 pub enum Error
 {
     Io(io::Error),
+    Environment(String),
     Runtime(String),
 }
 
@@ -40,6 +41,7 @@ impl error::Error for Error
     {
         match *self {
             Error::Io(ref e) => e.description(),
+            Error::Environment(_) => "something wrong with environment",
             Error::Runtime(_) => "execution failed during run-time",
         }
     }
@@ -59,6 +61,9 @@ impl fmt::Display for Error
     {
         match *self {
             Error::Io(ref e) => e.fmt(f),
+            Error::Environment(ref details) => {
+                write!(f, "environment failure: \"{}\"", details)
+            }
             Error::Runtime(ref stderr) => {
                 write!(f, "run-time failure: \"{}\"", stderr)
             }
@@ -67,27 +72,108 @@ impl fmt::Display for Error
 }
 
 #[derive(Clone, Debug)]
-pub struct Bot
+pub struct Env
 {
-    exe_path: String,
+    work_dir: PathBuf,
+    halite_exe: PathBuf,
+}
+
+impl Env
+{
+    pub fn new<P>(work_dir: P, halite_exe: P) -> Result<Self, Error>
+        where P: AsRef<Path>
+    {
+        let work_dir = try!(work_dir.as_ref().canonicalize());
+        let halite_exe = try!(halite_exe.as_ref().canonicalize());
+        Ok(Env {
+            work_dir: work_dir,
+            halite_exe: halite_exe,
+        })
+    }
+
+    pub fn path_to_halite(&self) -> &Path
+    {
+        self.halite_exe.as_path()
+    }
+
+    pub fn work_dir(&self) -> &Path
+    {
+        self.work_dir.as_path()
+    }
+
+    pub fn relative_from<P>(&self, path: P) -> Result<PathBuf, Error>
+        where P: AsRef<Path>
+    {
+        util::route_between(self.work_dir.as_path(), path.as_ref())
+            .map_err(Error::from)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BotArgs
+{
     brain: Option<String>,
     params: BTreeMap<String, f32>,
 }
 
-impl Bot
+impl BotArgs
 {
-    pub fn new(exe_path: String) -> Self
+    pub fn new() -> Self
     {
-        Bot {
-            exe_path: exe_path,
+        BotArgs {
             brain: None,
             params: BTreeMap::new(),
         }
     }
 
+    pub fn is_empty(&self) -> bool
+    {
+        self.brain.is_none() && self.params.is_empty()
+    }
+}
+
+impl fmt::Display for BotArgs
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
+    {
+        let mut needs_sep = false;
+        if let Some(ref brain) = self.brain {
+            try!(write!(f, "-b {}", brain));
+            needs_sep = true;
+        }
+        for (k, v) in self.params.iter() {
+            if needs_sep {
+                try!(write!(f, " "));
+            } else {
+                needs_sep = true;
+            }
+            try!(write!(f, "{}={}", k, v));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Bot
+{
+    exe_path: PathBuf,
+    args: BotArgs,
+}
+
+impl Bot
+{
+    pub fn new<P>(exe_path: P) -> Result<Self, Error>
+        where P: AsRef<Path>
+    {
+        Ok(Bot {
+            exe_path: try!(exe_path.as_ref().canonicalize()),
+            args: BotArgs::new(),
+        })
+    }
+
     pub fn set_param(&mut self, key: &str, value: f32) -> &mut Self
     {
-        self.params.insert(key.to_owned(), value);
+        self.args.params.insert(key.to_owned(), value);
         self
     }
 }
@@ -96,39 +182,54 @@ impl fmt::Display for Bot
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
     {
-        try!(write!(f, "{}", self.exe_path));
-        if let Some(ref brain) = self.brain {
-            try!(write!(f, " -b {}", brain));
-        }
-        for (k, v) in self.params.iter() {
-            try!(write!(f, " {}={}", k, v));
+        try!(write!(f, "{}", self.exe_path.display()));
+        if !self.args.is_empty() {
+            try!(write!(f, " {}", self.args));
         }
         Ok(())
     }
 }
 
-pub fn mk_bot_script<P>(bot: &Bot, script_path: P) -> Result<(), Error>
-    where P: AsRef<Path>
+fn write_script(env: &Env, bot: &Bot) -> Result<Vec<u8>, Error>
 {
-    {
-        let mut f = try!(File::create(&script_path));
-        try!(write!(f, "#!/bin/bash\n{}\n", bot));
+    let mut buffer = Vec::new();
+    let exe_path = try!(env.relative_from(&bot.exe_path));
+    try!(write!(buffer, "#!/bin/bash\nexec {}", exe_path.display()));
+    if !bot.args.is_empty() {
+        try!(write!(buffer, " {}", bot.args));
     }
-    let mut p = try!(fs::metadata(&script_path)).permissions();
-    let m = p.mode();
-    p.set_mode(m | 0o110);
-    try!(fs::set_permissions(&script_path, p));
-    Ok(())
+    try!(write!(buffer, "\n"));
+    Ok(buffer)
+}
+
+pub fn mk_bot_script(env: &Env, bot: &Bot) -> Result<PathBuf, Error>
+{
+    use md5;
+    use data_encoding::hex;
+    let buffer = try!(write_script(env, bot));
+    let digest = hex::encode(&md5::compute(&buffer));
+    let mut path = env.work_dir().to_path_buf();
+    path.push(digest);
+    if !path.is_file() {
+        {
+            let mut file = try!(File::create(&path));
+            try!(file.write(&buffer));
+        }
+        let mut perms = try!(fs::metadata(&path)).permissions();
+        let m = perms.mode();
+        perms.set_mode(m | 0o110);
+        try!(fs::set_permissions(&path, perms));
+    }
+    Ok(path)
 }
 
 #[derive(Clone, Debug)]
-pub struct Match
+pub struct Match<'a>
 {
-    server: String,
-    seed: Option<usize>,
     width: i16,
     height: i16,
-    bots: Vec<String>,
+    seed: Option<usize>,
+    bots: Vec<&'a Bot>,
 }
 
 #[derive(Clone, Debug)]
@@ -136,17 +237,17 @@ pub struct Outcome
 {
     pub seed: u64,
     pub rankings: Vec<u32>,
+    pub hlt_path: PathBuf,
 }
 
-impl Match
+impl<'a> Match<'a>
 {
-    pub fn new(server: &str, space: &Space) -> Self
+    pub fn new(space: &Space) -> Self
     {
         Match {
-            server: server.to_owned(),
-            seed: None,
             width: space.width(),
             height: space.height(),
+            seed: None,
             bots: Vec::new(),
         }
     }
@@ -157,13 +258,13 @@ impl Match
         self
     }
 
-    pub fn bot(mut self, path: &str) -> Self
+    pub fn bot(mut self, bot: &'a Bot) -> Self
     {
-        self.bots.push(path.to_owned());
+        self.bots.push(bot);
         self
     }
 
-    fn parse_output(&self, output: &[u8]) -> Result<Outcome, Error>
+    fn parse_output(&self, output: &[u8], env: &Env) -> Result<Outcome, Error>
     {
         use std::borrow::Cow;
         let output = String::from_utf8_lossy(output);
@@ -178,11 +279,12 @@ impl Match
             try!(lines.next().ok_or(err(&output)));
         }
         let seed;
+        let mut hlt_path = env.work_dir().to_path_buf();
         // The replay file name and seed
         {
             let l = try!(lines.next().ok_or(err(&output)));
             let mut s = l.split(' ');
-            let _hlt_path = try!(s.next().ok_or(err(&output)));
+            hlt_path.push(try!(s.next().ok_or(err(&output))));
             seed = try!(s.next()
                          .ok_or(err(&output))
                          .and_then(|s| {
@@ -226,27 +328,37 @@ impl Match
             Ok(Outcome {
                 seed: seed,
                 rankings: rankings,
+                hlt_path: hlt_path,
             })
         } else {
             Err(err(&output))
         }
     }
 
-    pub fn run(&mut self) -> Result<Outcome, Error>
+    pub fn run(&mut self, env: &Env) -> Result<Outcome, Error>
     {
-        let mut command = Command::new(self.server.clone());
-        command.arg("-q")
+        let mut command = Command::new(env.path_to_halite());
+        let work_dir = env.work_dir();
+        if !work_dir.is_dir() {
+            return Err(Error::Environment(format!("The working directory \
+                                                   {} does not exist or is \
+                                                   not an directory",
+                                                  work_dir.display())));
+        }
+        command.current_dir(work_dir)
+               .arg("-q")
                .arg("-d")
                .arg(format!("{} {}", self.width, self.height));
         if let Some(seed) = self.seed {
             command.arg("-s").arg(format!("{}", seed));
         }
         for bot in self.bots.iter() {
-            command.arg(bot);
+            let bot_path = try!(mk_bot_script(env, bot));
+            command.arg(bot_path);
         }
         let output = try!(command.output());
         if output.status.success() {
-            self.parse_output(&output.stdout)
+            self.parse_output(&output.stdout, env)
         } else {
             Err(Error::Runtime(String::from_utf8_lossy(&output.stderr)
                 .into_owned()))

@@ -24,5 +24,7 @@ path = "src/runner/main.rs"
 
 
 [dependencies]
+data-encoding = "1.1"
 getopts = "0.2"
+md5 = "0.2"
 rand = "0.3"

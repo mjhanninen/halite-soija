@@ -15,27 +15,40 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
+extern crate data_encoding;
+extern crate md5;
 extern crate ua;
 
 mod runner;
+
+use std::process;
 
 use ua::space::Space;
 
 fn main()
 {
-    let mut bot1 = runner::Bot::new("./target/release/MyBot".to_owned());
-    bot1.set_param("aggression", 100.0)
-        .set_param("production", 50.0);
-    println!("Bot command: {}", bot1);
-    runner::mk_bot_script(&bot1, "./tmp/foo").unwrap();
-    let space = Space::with_dims(20, 20);
-    let outcome = runner::Match::new("../Environment/halite", &space)
-        .seed(123)
-        .bot("./target/release/MyBot")
-        .bot("./target/release/MyBot")
-        .bot("./target/release/MyBot")
-        .run()
-        .unwrap();
-    println!("Halite Tournament Runner");
-    println!("Outcome = {:?}", outcome);
+    match runner::Env::new("./tmp/runner", "../Environment/halite") {
+        Ok(env) => {
+            let proto = runner::Bot::new("./target/release/MyBot").unwrap();
+            let bot1 = proto.clone();
+            let mut bot2 = proto.clone();
+            bot2.set_param("aggression_weigth", 100.0);
+            let mut bot3 = proto.clone();
+            bot3.set_param("minimum_movable_strength", 20.0);
+            let space = Space::with_dims(20, 20);
+            let outcome = runner::Match::new(&space)
+                .seed(123)
+                .bot(&bot1)
+                .bot(&bot2)
+                .bot(&bot3)
+                .run(&env)
+                .unwrap();
+            println!("Halite Tournament Runner");
+            println!("Outcome = {:?}", outcome);
+        }
+        Err(e) => {
+            println!("Failed to initialize environment: {:?}", e);
+            process::exit(1);
+        }
+    };
 }
