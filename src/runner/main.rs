@@ -23,13 +23,11 @@ use ua::space::Space;
 
 fn main()
 {
-    let mut s = String::new();
     let mut bot1 = runner::Bot::new("./target/release/MyBot".to_owned());
     bot1.set_param("aggression", 100.0)
         .set_param("production", 50.0);
-    bot1.command(&mut s);
-    println!("Bot command: {}", s);
-    println!("Bot command: {}", bot1.command_str());
+    println!("Bot command: {}", bot1);
+    runner::mk_bot_script(&bot1, "./tmp/foo").unwrap();
     let space = Space::with_dims(20, 20);
     let outcome = runner::Match::new("../Environment/halite", &space)
         .seed(123)

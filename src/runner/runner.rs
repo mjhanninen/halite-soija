@@ -17,8 +17,11 @@
 
 use std::collections::BTreeMap;
 use std::error;
-use std::fmt::{self, Write};
-use std::io;
+use std::fmt;
+use std::fs::{self, File};
+use std::io::{self, Write};
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::process::Command;
 use std::string::String;
 
@@ -87,26 +90,35 @@ impl Bot
         self.params.insert(key.to_owned(), value);
         self
     }
+}
 
-    pub fn command<W>(&self, w: &mut W)
-        where W: Write
+impl fmt::Display for Bot
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
     {
-        // XXX: Return Result instead of unwrapping
-        write!(w, "{}", self.exe_path).unwrap();
+        try!(write!(f, "{}", self.exe_path));
         if let Some(ref brain) = self.brain {
-            write!(w, " -b {}", brain).unwrap();
+            try!(write!(f, " -b {}", brain));
         }
         for (k, v) in self.params.iter() {
-            write!(w, " {}={}", k, v).unwrap();
+            try!(write!(f, " {}={}", k, v));
         }
+        Ok(())
     }
+}
 
-    pub fn command_str(&self) -> String
+pub fn mk_bot_script<P>(bot: &Bot, script_path: P) -> Result<(), Error>
+    where P: AsRef<Path>
+{
     {
-        let mut buffer = String::new();
-        self.command(&mut buffer);
-        buffer
+        let mut f = try!(File::create(&script_path));
+        try!(write!(f, "#!/bin/bash\n{}\n", bot));
     }
+    let mut p = try!(fs::metadata(&script_path)).permissions();
+    let m = p.mode();
+    p.set_mode(m | 0o110);
+    try!(fs::set_permissions(&script_path, p));
+    Ok(())
 }
 
 #[derive(Clone, Debug)]
