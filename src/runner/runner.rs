@@ -253,3 +253,109 @@ impl Match
         }
     }
 }
+
+mod util {
+
+    use std::io;
+    use std::path::{Path, PathBuf};
+
+    // Caveats: Doesn't revert ".." in a sensible way
+    fn revert_path<P>(a: P) -> PathBuf
+        where P: AsRef<Path>
+    {
+        let mut p = PathBuf::new();
+        for _ in a.as_ref().components() {
+            p.push("..");
+        }
+        p
+    }
+
+    // Caveats: Won't handle the cases where one is relative and the other is
+    // absolute.  Both `a` and `b` are expectd to share a common base whether
+    // that is the file system root or the "current" directory.
+    fn route_between_<P>(a: P, b: P) -> PathBuf
+        where P: AsRef<Path>
+    {
+        let mut a = a.as_ref().components();
+        let mut b = b.as_ref().components();
+        loop {
+            match (a.next(), b.next()) {
+                (Some(a_comp), Some(b_comp)) => {
+                    if a_comp == b_comp {
+                        continue;
+                    } else {
+                        let mut p = PathBuf::new();
+                        p.push("..");
+                        p.push(revert_path(a.as_path()));
+                        p.push(b_comp.as_os_str());
+                        p.push(b.as_path());
+                        return p;
+                    }
+                }
+                (Some(_), None) => {
+                    let mut p = PathBuf::new();
+                    p.push("..");
+                    p.push(revert_path(a.as_path()));
+                    return p;
+                }
+                (None, Some(b_comp)) => {
+                    let mut p = PathBuf::new();
+                    p.push(b_comp.as_os_str());
+                    p.push(b.as_path());
+                    return p;
+                }
+                (None, None) => {
+                    return PathBuf::new();
+                }
+            }
+        }
+    }
+
+    pub fn route_between<P>(a: P, b: P) -> io::Result<PathBuf>
+        where P: AsRef<Path>
+    {
+        let a = try!(a.as_ref().canonicalize());
+        let b = try!(b.as_ref().canonicalize());
+        Ok(route_between_(a, b))
+    }
+
+    #[cfg(test)]
+    mod test {
+        use std::path::PathBuf;
+        use super::{revert_path, route_between_};
+
+        #[test]
+        fn test_revert_path()
+        {
+            let cases = [("", ""),
+                         ("foo", ".."),
+                         ("for/bar", "../.."),
+                         ("foo/bar/baz", "../../..")];
+            for &(a, b) in cases.iter() {
+                println!("Recersion from {} should be {}", a, b);
+                let a = PathBuf::from(a);
+                let b = PathBuf::from(b);
+                assert_eq!(revert_path(&a), b);
+            }
+        }
+
+        #[test]
+        fn test_route_between_()
+        {
+            let cases = [("foo", "foo/baz", "baz"),
+                         ("foo/bar", "foo/baz", "../baz"),
+                         ("foo/bar/xyzzy", "foo/baz", "../../baz"),
+                         ("foo/bar/xyzzy", "foo/baz/yzxxz", "../../baz/yzxxz"),
+                         ("foo/bar", "foo/baz/yzxxz", "../baz/yzxxz"),
+                         ("foo", "foo/baz/yzxxz", "baz/yzxxz"),
+                         ("", "foo/baz/yzxxz", "foo/baz/yzxxz")];
+            for &(a, b, c) in cases.iter() {
+                println!("From {} to {} should be {}", a, b, c);
+                let a = PathBuf::from(a);
+                let b = PathBuf::from(b);
+                let c = PathBuf::from(c);
+                assert_eq!(route_between_(&a, &b), c);
+            }
+        }
+    }
+}
