@@ -236,7 +236,7 @@ pub struct Match<'a>
 pub struct Outcome
 {
     pub seed: u64,
-    pub rankings: Vec<u32>,
+    pub rankings: Vec<usize>,
     pub hlt_path: PathBuf,
 }
 
@@ -302,12 +302,12 @@ impl<'a> Match<'a>
             let _rank = try!(s.next()
                               .ok_or(err(&output))
                               .and_then(|s| {
-                                  s.parse::<u32>().map_err(|_| err(&output))
+                                  s.parse::<usize>().map_err(|_| err(&output))
                               }));
             let bot_id = try!(s.next()
                                .ok_or(err(&output))
                                .and_then(|s| {
-                                   s.parse::<u32>().map_err(|_| err(&output))
+                                   s.parse::<usize>().map_err(|_| err(&output))
                                }));
             rankings.push(bot_id);
             if s.next().is_some() {
