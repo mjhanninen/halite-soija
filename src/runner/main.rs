@@ -66,8 +66,8 @@ fn randomize_bot<R: Rng>(bot: &mut Bot, rng: &mut R)
        .set_param("minimum_movable_strength", mm_range.ind_sample(rng));
 }
 
-const POPULATION_SIZE: usize = 25;
-const TOURNAMENT_SIZE: usize = 50;
+const POPULATION_SIZE: usize = 100;
+const TOURNAMENT_SIZE: usize = 1000;
 
 fn do_tournament(env: &Env, proto: &Bot)
 {
@@ -77,8 +77,8 @@ fn do_tournament(env: &Env, proto: &Bot)
         randomize_bot(&mut bot.0, &mut rng);
     }
     // Run matches
-    let n_players_range = Range::new(6, 7);
-    let map_size_range = Range::new(5, 6);
+    let n_players_range = Range::new(2, 7);
+    let map_size_range = Range::new(5, 9);
     for ix in 0..TOURNAMENT_SIZE {
         bots.sort_by(|a, b| {
             f32_cmp(&(b.1.sigma() as f32), &(a.1.sigma() as f32))
