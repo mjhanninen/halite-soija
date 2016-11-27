@@ -1,6 +1,7 @@
 Cargo.lock
 /bots/
 /dist/
+/notrack/
 /target/
 /tmp/
 
