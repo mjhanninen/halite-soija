@@ -15,10 +15,38 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-pub mod brain;
-pub mod lone_expander;
-pub mod probe;
-pub mod simple;
-pub mod teddy;
+use std::borrow::Cow;
 
-pub use brain::brain::{Brain, Mold, run_forever};
+use ua::{Action, Environment, State};
+
+use brain::{Brain, Mold};
+use params::Params;
+
+pub struct TeddyMold;
+
+impl Mold for TeddyMold
+{
+    fn reanimate(&self,
+                 _params: &Params,
+                 _environment: Environment,
+                 _init_state: &State)
+        -> Box<Brain>
+    {
+        Box::new(TeddyBrain)
+    }
+
+    fn name(&self) -> Cow<str>
+    {
+        Cow::Borrowed(&"Teddy")
+    }
+}
+
+pub struct TeddyBrain;
+
+impl Brain for TeddyBrain
+{
+    fn tick(&mut self, _state: &State) -> Vec<Action>
+    {
+        vec![]
+    }
+}

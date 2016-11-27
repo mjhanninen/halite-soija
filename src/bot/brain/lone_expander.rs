@@ -15,16 +15,17 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::borrow::Cow;
 use std::f32;
 
 use ua::action::Action;
 use ua::dir::Dir;
-use ua::io;
 use ua::map::Map;
 use ua::space::Frame;
 use ua::util::f32_cmp;
 use ua::world::{Environment, Occupation, State, Tag};
 
+use brain::{Brain, Mold};
 use params::Params;
 
 const DEFAULT_DISCOUNT_FACTOR: f32 = 0.55;
@@ -45,9 +46,7 @@ fn f32_max(a: f32, b: f32) -> f32
     }
 }
 
-struct Mold;
-
-struct Brain
+pub struct LoneBrain
 {
     // Static environment
     environment: Environment,
@@ -59,25 +58,30 @@ struct Brain
     minimum_movable_strength: f32,
 }
 
-impl Mold
-{
-    fn new() -> Self
-    {
-        Mold
-    }
+pub struct LoneMold;
 
-    fn name(&self) -> &'static str
+impl LoneMold
+{
+    pub fn new() -> Self
     {
-        "LoneExpander"
+        LoneMold
+    }
+}
+
+impl Mold for LoneMold
+{
+    fn name(&self) -> Cow<str>
+    {
+        Cow::Borrowed(&"LoneExpander")
     }
 
     fn reanimate(&self,
                  params: &Params,
                  environment: Environment,
                  _: &State)
-        -> Brain
+        -> Box<Brain>
     {
-        Brain {
+        Box::new(LoneBrain {
             environment: environment,
             aggression_weight: *params.get("aggression_weight")
                                       .unwrap_or(&DEFAULT_AGGRESSION_WEIGHT),
@@ -90,7 +94,7 @@ impl Mold
             minimum_movable_strength:
                 *params.get("minimum_movable_strength")
                        .unwrap_or(&DEFAULT_MINIMUM_MOVABLE_STRENGTH),
-        }
+        })
     }
 }
 
@@ -100,15 +104,7 @@ fn perpetuity(discount_factor: f32) -> f32
     1.0 / (1.0 - discount_factor)
 }
 
-#[allow(dead_code)]
-struct Choice<'a>
-{
-    source: Frame<'a>,
-    target: Frame<'a>,
-    utility: f32,
-}
-
-impl Brain
+impl LoneBrain
 {
     fn calc_density_map(&self,
                         who: Tag,
@@ -263,7 +259,10 @@ impl Brain
     {
         self.environment.my_tag
     }
+}
 
+impl Brain for LoneBrain
+{
     fn tick(&mut self, state: &State) -> Vec<Action>
     {
         let densities = self.calc_density_map(self.me(), &state.occupation_map);
@@ -288,23 +287,5 @@ impl Brain
             }
         }
         actions
-    }
-}
-
-pub fn run(params: &Params)
-{
-    let mut connection = io::Connection::new();
-    let environment = connection.recv_environment().unwrap();
-    let mut state_frame = State::for_environment(&environment);
-    connection.recv_state(&mut state_frame).unwrap();
-    let mold = Mold::new();
-    let my_tag = environment.my_tag;
-    let mut brain = mold.reanimate(params, environment, &state_frame);
-    connection.send_ready(&my_tag, &format!("UA_{}", mold.name()))
-              .unwrap();
-    loop {
-        connection.recv_state(&mut state_frame).unwrap();
-        let actions = brain.tick(&state_frame);
-        connection.send_actions(actions.iter()).unwrap();
     }
 }

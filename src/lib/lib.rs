@@ -24,3 +24,9 @@ pub mod onion;
 pub mod space;
 pub mod util;
 pub mod world;
+
+pub use action::Action;
+pub use coord::Coord;
+pub use dir::Dir;
+pub use space::{Frame, Space};
+pub use world::{Environment, Occupation, Production, State, Strength, Tag};

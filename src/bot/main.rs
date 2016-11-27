@@ -34,6 +34,7 @@ enum Brain
     LoneExpander,
     Probe,
     Simple,
+    Teddy,
 }
 
 impl Brain
@@ -57,6 +58,7 @@ impl FromStr for Brain
             "lone_expander" => Ok(Brain::LoneExpander),
             "probe" => Ok(Brain::Probe),
             "simple" => Ok(Brain::Simple),
+            "teddy" => Ok(Brain::Teddy),
             _ => Err(format!("no brain with name '{}'", s)),
         }
     }
@@ -128,8 +130,27 @@ fn main()
     match parse_options() {
         Ok(OptionParsing::Config(config)) => {
             match config.brain {
+                Brain::Teddy => {
+                    let mold = brain::teddy::TeddyMold;
+                    if let Err(why) =
+                           brain::brain::run_forever(&mold, &config.params) {
+                        writeln!(std::io::stderr(),
+                                 "Error while driving brain: {:?}",
+                                 why)
+                            .unwrap();
+                        std::process::exit(1);
+                    }
+                }
                 Brain::LoneExpander => {
-                    brain::lone_expander::run(&config.params)
+                    let mold = brain::lone_expander::LoneMold::new();
+                    if let Err(why) =
+                           brain::brain::run_forever(&mold, &config.params) {
+                        writeln!(std::io::stderr(),
+                                 "Error while driving brain: {:?}",
+                                 why)
+                            .unwrap();
+                        std::process::exit(1);
+                    }
                 }
                 Brain::Probe => brain::probe::run(&config.params),
                 Brain::Simple => brain::simple::run(&config.params),
