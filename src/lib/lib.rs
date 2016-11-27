@@ -28,5 +28,6 @@ pub mod world;
 pub use action::Action;
 pub use coord::Coord;
 pub use dir::Dir;
+pub use map::Map;
 pub use space::{Frame, Space};
 pub use world::{Environment, Occupation, Production, State, Strength, Tag};

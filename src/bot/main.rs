@@ -129,31 +129,19 @@ fn main()
 {
     match parse_options() {
         Ok(OptionParsing::Config(config)) => {
-            match config.brain {
-                Brain::Teddy => {
-                    let mold = brain::teddy::TeddyMold;
-                    if let Err(why) =
-                           brain::brain::run_forever(&mold, &config.params) {
-                        writeln!(std::io::stderr(),
-                                 "Error while driving brain: {:?}",
-                                 why)
-                            .unwrap();
-                        std::process::exit(1);
-                    }
-                }
-                Brain::LoneExpander => {
-                    let mold = brain::lone_expander::LoneMold::new();
-                    if let Err(why) =
-                           brain::brain::run_forever(&mold, &config.params) {
-                        writeln!(std::io::stderr(),
-                                 "Error while driving brain: {:?}",
-                                 why)
-                            .unwrap();
-                        std::process::exit(1);
-                    }
-                }
-                Brain::Probe => brain::probe::run(&config.params),
-                Brain::Simple => brain::simple::run(&config.params),
+            let mold: Box<brain::Mold> = match config.brain {
+                Brain::Teddy => Box::new(brain::teddy::TeddyMold),
+                Brain::LoneExpander => Box::new(brain::lone_expander::LoneMold),
+                Brain::Probe => Box::new(brain::probe::ProbeMold),
+                Brain::Simple => Box::new(brain::simple::SimpleMold),
+            };
+            if let Err(why) = brain::brain::run_forever(mold.as_ref(),
+                                                        &config.params) {
+                writeln!(std::io::stderr(),
+                         "Error while driving brain: {:?}",
+                         why)
+                    .unwrap();
+                std::process::exit(1);
             }
         }
         Ok(OptionParsing::ShowUsage(usage)) => {

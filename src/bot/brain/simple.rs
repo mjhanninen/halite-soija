@@ -15,17 +15,36 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::fs::File;
+use std::borrow::Cow;
 
-use ua::action::Action;
-use ua::dir::Dir;
-use ua::io;
-use ua::map::Map;
-use ua::space::Frame;
-use ua::util::LoggedUnwrap;
-use ua::world::{Environment, Occupation, State};
+use ua::{Action, Dir, Environment, Frame, Map, Occupation, State};
 
 use params::Params;
+use brain::{Brain, Mold};
+
+pub struct SimpleMold;
+
+impl Mold for SimpleMold
+{
+    fn name(&self) -> Cow<str>
+    {
+        Cow::Borrowed(&"Simple")
+    }
+
+    fn reanimate(&self,
+                 _params: &Params,
+                 environment: Environment,
+                 _init_state: &State)
+        -> Box<Brain>
+    {
+        Box::new(SimpleBrain { environment: environment })
+    }
+}
+
+pub struct SimpleBrain
+{
+    environment: Environment,
+}
 
 fn tick_site(origin: &Frame,
              src: &Occupation,
@@ -50,41 +69,23 @@ fn tick_site(origin: &Frame,
     None
 }
 
-fn tick(environment: &Environment, state: &State) -> Vec<Action>
+impl Brain for SimpleBrain
 {
-    let me = environment.my_tag;
-    let mut actions = vec![];
-    for f in environment.space.frames() {
-        let source = &state.occupation_map[f.ix()];
-        if source.tag == me {
-            if let Some(dir) = tick_site(&f,
-                                         source,
-                                         &state.occupation_map,
-                                         me) {
-                actions.push((f.coord(), Some(dir)));
+    fn tick(&mut self, state: &State) -> Vec<Action>
+    {
+        let me = self.environment.my_tag;
+        let mut actions = vec![];
+        for f in self.environment.space.frames() {
+            let source = &state.occupation_map[f.ix()];
+            if source.tag == me {
+                if let Some(dir) = tick_site(&f,
+                                             source,
+                                             &state.occupation_map,
+                                             me) {
+                    actions.push((f.coord(), Some(dir)));
+                }
             }
         }
-    }
-    actions
-}
-
-pub fn run(_: &Params)
-{
-    let mut log_file = File::create("runtime.log").unwrap();
-    let mut connection = io::Connection::new();
-    let environment = connection.recv_environment()
-                                .unwrap_or_log(&mut log_file);
-    let mut state_frame = State::for_environment(&environment);
-    connection.recv_state(&mut state_frame)
-              .unwrap_or_log(&mut log_file);
-    // You've got 15 seconds to spare on this line. Use it well.
-    connection.send_ready(&environment.my_tag, "UmpteenthAnion")
-              .unwrap_or_log(&mut log_file);
-    loop {
-        connection.recv_state(&mut state_frame)
-                  .unwrap_or_log(&mut log_file);
-        let actions = tick(&environment, &state_frame);
-        connection.send_actions(actions.iter())
-                  .unwrap_or_log(&mut log_file);
+        actions
     }
 }

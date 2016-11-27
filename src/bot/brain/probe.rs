@@ -15,47 +15,58 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::borrow::Cow;
 use std::num::Wrapping;
 
 use rand::{self, Rng};
-use ua::coord::Coord;
-use ua::io;
-use ua::world::State;
+use ua::{Action, Coord, Environment, State};
 
+use brain::{Brain, Mold};
 use params::Params;
 
 const ALPHA: f64 = 1000.0;
 const BETA: f64 = 0.125;
 
-fn tick<R: Rng>(iteration: i32, rng: &mut R) -> bool
+pub struct ProbeMold;
+
+impl Mold for ProbeMold
 {
-    let work_load = (ALPHA * (iteration as f64 * BETA).exp()) as usize;
-    let mut path = Wrapping(0);
-    for _ in 0..work_load {
-        path += Wrapping(rng.gen::<u64>())
+    fn name(&self) -> Cow<str>
+    {
+        Cow::Borrowed(&"Probe")
     }
-    path.0 & 1 == 0
+
+
+    fn reanimate(&self,
+                 _params: &Params,
+                 _environment: Environment,
+                 _init_state: &State)
+        -> Box<Brain>
+    {
+        Box::new(ProbeBrain { iteration: 0 })
+    }
 }
 
-pub fn run(_: &Params)
+pub struct ProbeBrain
 {
-    let mut connection = io::Connection::new();
-    let environment = connection.recv_environment().unwrap();
-    let mut state_frame = State::for_environment(&environment);
-    connection.recv_state(&mut state_frame).unwrap();
-    connection.send_ready(&environment.my_tag, "UA_Probe").unwrap();
-    let red_actions = vec![(Coord { x: 0, y: 0 }, None)];
-    let black_actions = vec![(Coord { x: 1, y: 0 }, None)];
-    let mut rng = rand::thread_rng();
-    let mut iteration = 0;
-    loop {
-        iteration += 1;
-        connection.recv_state(&mut state_frame).unwrap();
-        let actions = if tick(iteration, &mut rng) {
-            &red_actions
+    iteration: i32,
+}
+
+impl Brain for ProbeBrain
+{
+    fn tick(&mut self, _state: &State) -> Vec<Action>
+    {
+        self.iteration += 1;
+        let work_load = (ALPHA * (self.iteration as f64 * BETA).exp()) as usize;
+        let mut path = Wrapping(0);
+        let mut rng = rand::thread_rng();
+        for _ in 0..work_load {
+            path += Wrapping(rng.gen::<u64>())
+        }
+        if path.0 & 1 == 0 {
+            vec![(Coord { x: 0, y: 0 }, None)]
         } else {
-            &black_actions
-        };
-        connection.send_actions(actions.iter()).unwrap();
+            vec![(Coord { x: 1, y: 0 }, None)]
+        }
     }
 }

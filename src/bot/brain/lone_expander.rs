@@ -18,12 +18,8 @@
 use std::borrow::Cow;
 use std::f32;
 
-use ua::action::Action;
-use ua::dir::Dir;
-use ua::map::Map;
-use ua::space::Frame;
+use ua::{Action, Dir, Environment, Frame, Map, Occupation, State, Tag};
 use ua::util::f32_cmp;
-use ua::world::{Environment, Occupation, State, Tag};
 
 use brain::{Brain, Mold};
 use params::Params;
