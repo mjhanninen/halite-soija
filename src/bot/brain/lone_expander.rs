@@ -94,6 +94,9 @@ impl Mold for LoneMold
     }
 }
 
+// XXX: This is actually broken; but the model parameters are optimized for
+// this incorrect form, so I dare not to change it :P
+#[inline]
 fn perpetuity(discount_factor: f32) -> f32
 {
     assert!(discount_factor < 1.0);
