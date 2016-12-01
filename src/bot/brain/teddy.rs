@@ -17,7 +17,8 @@
 
 use std::borrow::Cow;
 
-use ua::{Action, Economic, Environment, Frame, Mask, Occupation, State, Wave};
+use ua::{Action, Economic, Environment, Frame, Mask, Occupation, Production,
+         State, Tag, Wave};
 
 use brain::{Brain, Mold};
 use params::Params;
@@ -46,62 +47,68 @@ pub struct TeddyBrain
     environment: Environment,
 }
 
-fn compute_outward_utility(z: &Frame,
-                           avoid: &Mask,
+const PROD_PER_TURN: f32 = 16.0;
+
+fn compute_outward_utility(source: &Frame,
+                           me: &Tag,
+                           gamma: f32,
+                           turns_left: u32,
+                           productions: &Vec<Production>,
                            occupations: &Vec<Occupation>)
-    -> i16
+    -> f32
 {
-    z.dijkstra_scan(|q: &Frame| {
-         if *q.on(avoid) {
-             None
-         } else {
-             Some(q.on(occupations).strength)
-         }
-     })
-     .map(|e: (i16, Frame)| e.0)
-     .sum()
+    // We measure the distance of each outward path in terms of strength
+    // points we need to conquer along that path.  To convert that into a
+    // number of turns we assume that we can produce fixed amount of
+    // conquering strength per turn.  In reality that number varies over time
+    // but this is start.
+    let gamma_dist = (gamma.ln() / PROD_PER_TURN).exp();
+    source.dijkstra_scan(|z| {
+              let occupation = z.on(occupations);
+              if occupation.tag == *me {
+                  None
+              } else {
+                  Some(occupation.strength)
+              }
+          })
+          .map(|(dist, z)| {
+              let turns_till_capture =
+                  (dist as f32 / PROD_PER_TURN).ceil() as i32;
+              let capacity = *z.on(productions) as f32;
+              let output = gamma.annuity(turns_left as i32 -
+                                         turns_till_capture) *
+                           capacity;
+              gamma_dist.discount(dist as i32) * output
+          })
+          .sum()
 }
 
 impl Brain for TeddyBrain
 {
     fn tick(&mut self, state: &State) -> Vec<Action>
     {
-        // 1. Update the mask of the current occupied area and the rim.
-        //
-        // 2. Generate a wave from the current rim outwards and then compute
-        //    utilities for the rim cells by rolling the wave back.
+        let turns_left = self.environment.total_turns - state.turn;
+        let gamma = 0.5_f32;
         let me = self.environment.my_tag;
         let my_body = Mask::create(&self.environment.space, |z: &Frame| {
             z.on(&state.occupation_map).tag == me
         });
-        // Compute the utility frontier along the rim
+        // Compute the expected utilities along the rim consisting of cells
+        // immediately adjacent to my bot.
         let wave = Wave::from(&my_body);
-        if let Some(rim) = wave.front(0) {
-            for z in rim {
-                let _u = compute_outward_utility(&z,
-                                                 &my_body,
-                                                 &state.occupation_map);
-            }
-        } else {
-            // Yeah,
-        }
-        //
-        let gamma = 0.5_f32;
-        let space = &self.environment.space;
-        let mut my_extensions = Wave::new(space);
-        my_extensions.ripple(&my_body);
-        let mut prods = vec![0.0_f32; space.len()];
-        for z in my_extensions.contraction() {
-            /* let max_succ_reward = z.successors().map(|s: &Frame| {
-             * s.on(&prods)
-             * }).max();
-             * */
-            let max_succ_reward = 0.0;
-            let curr_reward = *z.on(&self.environment.production_map) as f32 *
-                              gamma.perpetuity();
-            let resistance = z.on(&state.occupation_map).strength;
-            *z.on_mut(&mut prods) = gamma.discount(resistance as i32) *
-                                    (curr_reward + max_succ_reward);
+        if let Some(rim) = wave.front(1) {
+            rim.map(|z| {
+                   let utility = compute_outward_utility(&z,
+                                                         &me,
+                                                         gamma,
+                                                         turns_left,
+                                                         &self.environment
+                                                              .production_map,
+                                                         &state.occupation_map);
+
+                   (z, utility)
+               })
+               .collect::<Vec<_>>();
         }
         // Do nothing
         vec![]

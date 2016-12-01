@@ -27,8 +27,14 @@ pub type Strength = i16;
 pub struct Environment
 {
     pub my_tag: Tag,
+    pub total_turns: u32,
     pub space: Space,
     pub production_map: Vec<Production>,
+}
+
+fn total_turns(width: i16, height: i16) -> u32
+{
+    ((width * height) as f32).sqrt().floor() as u32
 }
 
 impl Environment
@@ -39,6 +45,7 @@ impl Environment
         let production_map = Vec::with_capacity(space.len());
         Environment {
             my_tag: my_tag,
+            total_turns: total_turns(width, height),
             space: space,
             production_map: production_map,
         }
@@ -55,6 +62,7 @@ pub struct Occupation
 #[derive(Debug)]
 pub struct State
 {
+    pub turn: u32,
     pub occupation_map: Vec<Occupation>,
 }
 
@@ -63,8 +71,9 @@ impl State
     pub fn for_environment(environment: &Environment) -> Self
     {
         State {
-            occupation_map: vec![Occupation {tag: 0, strength: 0};
-                 environment.space.len()],
+            turn: 0,
+            occupation_map:
+                vec![Occupation {tag: 0, strength: 0}; environment.space.len()],
         }
     }
 }
