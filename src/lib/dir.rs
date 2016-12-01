@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::slice;
+
 #[derive(Clone, Copy, Debug)]
 pub enum Dir
 {
@@ -24,43 +26,15 @@ pub enum Dir
     West,
 }
 
+pub static DIRS: [Dir; 4] = [Dir::North, Dir::East, Dir::South, Dir::West];
+
+pub type Dirs = slice::Iter<'static, Dir>;
+
 impl Dir
 {
+    #[inline]
     pub fn dirs() -> Dirs
     {
-        Dirs { d: Some(Dir::North) }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Dirs
-{
-    d: Option<Dir>,
-}
-
-impl Iterator for Dirs
-{
-    type Item = Dir;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item>
-    {
-        let d = self.d;
-        match d {
-            Some(Dir::North) => {
-                self.d = Some(Dir::East);
-            }
-            Some(Dir::East) => {
-                self.d = Some(Dir::South);
-            }
-            Some(Dir::South) => {
-                self.d = Some(Dir::West);
-            }
-            Some(Dir::West) => {
-                self.d = None;
-            }
-            None => {}
-        }
-        d
+        DIRS.iter()
     }
 }

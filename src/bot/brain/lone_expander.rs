@@ -246,7 +246,7 @@ impl LoneBrain
                     f32::NEG_INFINITY
                 }
             };
-            utilities.push((u, Some(d)));
+            utilities.push((u, Some(*d)));
         }
         utilities.sort_by(|a, b| f32_cmp(&b.0, &a.0));
         assert!(utilities[0].0.is_finite());

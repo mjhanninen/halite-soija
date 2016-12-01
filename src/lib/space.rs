@@ -76,11 +76,6 @@ pub struct Frame<'a>
 
 impl<'a> Frame<'a>
 {
-    pub fn frames(&self) -> Frames
-    {
-        self.space.frames()
-    }
-
     #[inline]
     pub fn ix(&self) -> usize
     {
@@ -111,9 +106,9 @@ impl<'a> Frame<'a>
     }
 
     #[inline]
-    pub fn adjacent_in(&self, dir: Dir) -> Frame<'a>
+    pub fn adjacent_in(&self, dir: &Dir) -> Frame<'a>
     {
-        let origin = match dir {
+        let origin = match *dir {
             Dir::North => {
                 if self.origin < self.space.w {
                     self.origin + self.space.sz - self.space.w

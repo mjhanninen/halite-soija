@@ -56,14 +56,14 @@ fn tick_site(origin: &Frame,
         let f = origin.adjacent_in(d);
         let tgt = &occupations[f.ix()];
         if tgt.tag != me && tgt.strength < src.strength {
-            return Some(d);
+            return Some(*d);
         }
     }
     for d in Dir::dirs() {
         let f = origin.adjacent_in(d);
         let tgt = &occupations[f.ix()];
         if tgt.tag == me && 2 * (tgt.strength as i16) < src.strength as i16 {
-            return Some(d);
+            return Some(*d);
         }
     }
     None

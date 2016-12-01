@@ -27,9 +27,9 @@ pub struct Coord
 impl Coord
 {
     #[inline]
-    pub fn neighbor(&self, dir: Dir) -> Coord
+    pub fn neighbor(&self, dir: &Dir) -> Coord
     {
-        match dir {
+        match *dir {
             Dir::North => {
                 Coord {
                     x: self.x,
