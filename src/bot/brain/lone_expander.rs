@@ -18,7 +18,7 @@
 use std::borrow::Cow;
 use std::f32;
 
-use ua::{Action, Dir, Environment, Frame, Map, Occupation, State, Tag};
+use ua::{Action, Dir, Environment, Frame, Occupation, State, Tag};
 use ua::util::f32_cmp;
 
 use brain::{Brain, Mold};
@@ -99,8 +99,8 @@ impl LoneBrain
 {
     fn calc_density_map(&self,
                         who: Tag,
-                        occupations: &Map<Occupation>)
-        -> Map<f32>
+                        occupations: &Vec<Occupation>)
+        -> Vec<f32>
     {
         let mut densities = vec![0.0; occupations.len()];
         for f in self.environment.space.frames() {
@@ -123,8 +123,8 @@ impl LoneBrain
     fn calc_ownership_map(&self,
                           who: Tag,
                           discount_factor: f32,
-                          occupations: &Map<Occupation>)
-        -> Map<f32>
+                          occupations: &Vec<Occupation>)
+        -> Vec<f32>
     {
         let space = &self.environment.space;
         let productions = &self.environment.production_map;
@@ -151,8 +151,8 @@ impl LoneBrain
     fn calc_blood_map(&self,
                       who: Tag,
                       discount_factor: f32,
-                      occupations: &Map<Occupation>)
-        -> Map<f32>
+                      occupations: &Vec<Occupation>)
+        -> Vec<f32>
     {
         let space = &self.environment.space;
         let ln_df = discount_factor.ln();
@@ -177,14 +177,14 @@ impl LoneBrain
                           who: Tag,
                           loc: Frame,
                           state: &State,
-                          densities: &Map<f32>,
-                          ownerships: &Map<f32>,
-                          blood: &Map<f32>)
+                          densities: &Vec<f32>,
+                          ownerships: &Vec<f32>,
+                          blood: &Vec<f32>)
         -> Action
     {
         let productions = &self.environment.production_map;
         let occupations = &state.occupation_map;
-        let o_src = loc.on(&occupations);
+        let o_src = loc.on(occupations);
         let d_src = *loc.on(densities);
         let e_src = *loc.on(ownerships);
         let b_src = *loc.on(blood);
@@ -201,7 +201,7 @@ impl LoneBrain
         // Utilities for moving
         for d in Dir::dirs() {
             let p = loc.adjacent_in(d);
-            let o_tgt = p.on(&occupations);
+            let o_tgt = p.on(occupations);
             let d_tgt = *p.on(densities);
             let e_tgt = *p.on(ownerships);
             let b_tgt = *p.on(blood);

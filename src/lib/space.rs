@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::cmp::Ordering;
+
 use coord::Coord;
 use dir::Dir;
 use map::Map;
@@ -31,7 +33,7 @@ impl Space
 {
     pub fn with_dims(width: i16, height: i16) -> Self
     {
-        assert!(width > 0 && height > 0);
+        debug_assert!(width > 0 && height > 0);
         Space {
             sz: width as u16 * height as u16,
             w: width as u16,
@@ -67,7 +69,7 @@ impl Space
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Frame<'a>
 {
     space: &'a Space,
@@ -83,15 +85,17 @@ impl<'a> Frame<'a>
     }
 
     #[inline]
-    pub fn on<'b, T>(&self, map: &'b Map<T>) -> &'b T
+    pub fn on<'b, T, M>(&self, map: &'b M) -> &'b T
+        where M: Map<T>
     {
-        &map[self.ix()]
+        map.at(self.ix())
     }
 
     #[inline]
-    pub fn on_mut<'b, T>(&self, map: &'b mut Map<T>) -> &'b mut T
+    pub fn on_mut<'b, T, M>(&self, map: &'b mut M) -> &'b mut T
+        where M: Map<T>
     {
-        &mut map[self.ix()]
+        map.at_mut(self.ix())
     }
 
     #[inline]
@@ -140,7 +144,7 @@ impl<'a> Frame<'a>
                 }
             }
         };
-        assert!(origin < self.space.sz);
+        debug_assert!(origin < self.space.sz);
         Frame { origin: origin, ..*self }
     }
 
@@ -173,7 +177,7 @@ impl<'a> Frame<'a>
     #[inline]
     pub fn l1_norm(&self, other: &Frame) -> i16
     {
-        assert!(self.space == other.space);
+        debug_assert!(self.space == other.space);
         let w = self.space.w;
         let h = self.space.h;
         let y1 = self.origin / w;
@@ -183,6 +187,106 @@ impl<'a> Frame<'a>
         let dx = modular::dist(x1, x2, w);
         let dy = modular::dist(y1, y2, h);
         (dx + dy) as i16
+    }
+}
+
+impl<'a> PartialOrd for Frame<'a>
+{
+    #[inline]
+    fn partial_cmp(&self, other: &Frame<'a>) -> Option<Ordering>
+    {
+        self.origin.partial_cmp(&other.origin)
+    }
+}
+
+impl<'a> Ord for Frame<'a>
+{
+    #[inline]
+    fn cmp(&self, other: &Frame<'a>) -> Ordering
+    {
+        self.origin.cmp(&other.origin)
+    }
+}
+
+// =============================================================================
+// Uniform-cost scan
+// -----------------------------------------------------------------------------
+
+use std::collections::BinaryHeap;
+
+#[allow(dead_code)]
+pub struct DijsktraScan<'a, F>
+{
+    space: &'a Space,
+    cost_fn: F,
+    visited: Vec<bool>,
+    queue: BinaryHeap<(i16, Frame<'a>)>,
+}
+
+impl<'a, F> DijsktraScan<'a, F>
+{
+    pub fn new(cost_fn: F, frame: &Frame<'a>) -> DijsktraScan<'a, F>
+        where F: Fn(&Frame) -> Option<i16>
+    {
+        let mut queue = BinaryHeap::with_capacity(frame.space.len() * 2);
+        if let Some(init_cost) = cost_fn(frame) {
+            queue.push((-init_cost, frame.clone()));
+        }
+        DijsktraScan {
+            space: frame.space,
+            cost_fn: cost_fn,
+            visited: vec![false; frame.space.len()],
+            // The upper bound of the priority queue is 2 * width * height;
+            // think of the general case to add three new cell to the search
+            // queue you have to consume one cell from the existing queue.
+            // This means that there are at most 2 untried branches per
+            // visited cell in the search queue.
+            queue: queue,
+        }
+    }
+}
+
+impl<'a> Frame<'a>
+{
+    pub fn dijkstra_scan<F>(&self, cost_fn: F) -> DijsktraScan<F>
+        where F: Fn(&Frame) -> Option<i16>
+    {
+        DijsktraScan::new(cost_fn, &self)
+    }
+}
+
+impl<'a, F> Iterator for DijsktraScan<'a, F>
+    where F: Fn(&Frame) -> Option<i16>
+{
+    type Item = (i16, Frame<'a>);
+
+    fn next(&mut self) -> Option<Self::Item>
+    {
+        // The queue is implemented as a maximum heap. We push the negative of
+        // the cost to get the minimum cost ordering.
+        while let Some((neg_cost, frame)) = self.queue.pop() {
+            let unvisited = {
+                let mut visited = frame.on_mut(&mut self.visited);
+                if *visited {
+                    false
+                } else {
+                    *visited = true;
+                    true
+                }
+            };
+            if unvisited {
+                for dir in Dir::dirs() {
+                    let adj_frame = frame.adjacent_in(dir);
+                    if !*adj_frame.on(&self.visited) {
+                        if let Some(step_cost) = (self.cost_fn)(&adj_frame) {
+                            self.queue.push((neg_cost - step_cost, adj_frame))
+                        }
+                    }
+                }
+                return Some((-neg_cost, frame));
+            }
+        }
+        None
     }
 }
 
@@ -257,6 +361,21 @@ pub struct Mask<'a>
     mask: Vec<bool>,
 }
 
+impl<'a> Map<bool> for Mask<'a>
+{
+    #[inline]
+    fn at(&self, z: usize) -> &bool
+    {
+        &self.mask[z]
+    }
+
+    #[inline]
+    fn at_mut(&mut self, z: usize) -> &mut bool
+    {
+        &mut self.mask[z]
+    }
+}
+
 impl<'a> Mask<'a>
 {
     pub fn new(space: &'a Space) -> Self
@@ -292,9 +411,9 @@ pub struct Wave<'a>
     // Image of wave front indices
     wave: Vec<u8>,
     // Table of call indices belonging to fronts
-    fronts: Vec<u16>,
+    zs: Vec<u16>,
     // Table of indices in `fronts` where the next front starts
-    starts: Vec<u16>,
+    stops: Vec<u16>,
 }
 
 impl<'a> Wave<'a>
@@ -308,36 +427,43 @@ impl<'a> Wave<'a>
         Wave {
             space: space,
             wave: vec![0; n],
-            fronts: vec![0; n],
-            starts: Vec::with_capacity(d as usize),
+            zs: vec![0; n],
+            stops: Vec::with_capacity(d as usize),
         }
+    }
+
+    pub fn from(source: &'a Mask) -> Self
+    {
+        let mut wave = Wave::new(source.space);
+        wave.ripple(&source);
+        wave
     }
 
     pub fn ripple(&mut self, seed: &Mask)
     {
-        assert_eq!(self.space, seed.space);
+        debug_assert_eq!(self.space, seed.space);
         let n = self.space.len() as u16;
         let w = self.space.width() as u16;
         let h = self.space.height() as u16;
         // Initialize with seed
         let mut s = 0;
-        self.starts.clear();
+        self.stops.clear();
         for z in 0..self.wave.len() {
             self.wave[z] = if seed.mask[z] {
-                self.fronts[s] = z as u16;
+                self.zs[s] = z as u16;
                 s += 1;
                 1
             } else {
                 0
             }
         }
-        self.starts.push(s as u16);
+        self.stops.push(s as u16);
         // Expand the wave front
         let mut a = 0;
         for t in 2.. {
             let s0 = s;
             for i in a..s0 {
-                let z = self.fronts[i];
+                let z = self.zs[i];
                 let y = z / w;
                 let x = z - w * y;
                 // Expand westwards
@@ -348,7 +474,7 @@ impl<'a> Wave<'a>
                 } as usize;
                 if self.wave[z_w] == 0 {
                     self.wave[z_w] = t;
-                    self.fronts[s] = z_w as u16;
+                    self.zs[s] = z_w as u16;
                     s += 1;
                 }
                 // Expand eastwards
@@ -359,7 +485,7 @@ impl<'a> Wave<'a>
                 } as usize;
                 if self.wave[z_e] == 0 {
                     self.wave[z_e] = t;
-                    self.fronts[s] = z_e as u16;
+                    self.zs[s] = z_e as u16;
                     s += 1;
                 }
                 // Expand northwards
@@ -370,7 +496,7 @@ impl<'a> Wave<'a>
                 } as usize;
                 if self.wave[z_n] == 0 {
                     self.wave[z_n] = t;
-                    self.fronts[s] = z_n as u16;
+                    self.zs[s] = z_n as u16;
                     s += 1;
                 }
                 // Expand southwards
@@ -381,17 +507,37 @@ impl<'a> Wave<'a>
                 } as usize;
                 if self.wave[z_s] == 0 {
                     self.wave[z_s] = t;
-                    self.fronts[s] = z_s as u16;
+                    self.zs[s] = z_s as u16;
                     s += 1;
                 }
             }
             // Did we expand the wave?
             if s > s0 {
-                self.starts.push(s as u16);
+                self.stops.push(s as u16);
                 a = s0;
             } else {
                 break;
             }
+        }
+    }
+
+    pub fn front(&'a self, ix: usize) -> Option<Front<'a>>
+    {
+        if ix < self.stops.len() {
+            let start = if ix == 0 {
+                0
+            } else {
+                self.stops[ix - 1]
+            };
+            let stop = self.stops[ix];
+            Some(Front {
+                wave: self,
+                zs: &self.zs,
+                start: start as usize,
+                stop: stop as usize,
+            })
+        } else {
+            None
         }
     }
 
@@ -406,6 +552,7 @@ impl<'a> Wave<'a>
     }
 }
 
+#[allow(dead_code)]
 pub struct Contraction<'a>
 {
     wave: &'a Wave<'a>,
@@ -421,9 +568,38 @@ impl<'a> Iterator for Contraction<'a>
     }
 }
 
+#[allow(dead_code)]
 pub struct Expansion<'a>
 {
     wave: &'a Wave<'a>,
+}
+
+pub struct Front<'a>
+{
+    wave: &'a Wave<'a>,
+    zs: &'a [u16],
+    start: usize,
+    stop: usize,
+}
+
+impl<'a> Iterator for Front<'a>
+{
+    type Item = Frame<'a>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item>
+    {
+        if self.start < self.stop {
+            let z = Frame {
+                space: self.wave.space,
+                origin: self.zs[self.start],
+            };
+            self.start += 1;
+            Some(z)
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -490,7 +666,7 @@ mod modular {
     #[inline]
     pub fn add(a: u16, b: u16, m: u16) -> u16
     {
-        assert!(a < m && b < m);
+        debug_assert!(a < m && b < m);
         let c = a + b;
         if c < m {
             c
@@ -502,7 +678,7 @@ mod modular {
     #[inline]
     pub fn sub(a: u16, b: u16, m: u16) -> u16
     {
-        assert!(a < m && b < m);
+        debug_assert!(a < m && b < m);
         if a >= b {
             a - b
         } else {
@@ -513,7 +689,7 @@ mod modular {
     #[inline]
     pub fn dist(a: u16, b: u16, m: u16) -> u16
     {
-        assert!(a < m && b < m);
+        debug_assert!(a < m && b < m);
         let d1 = if a < b {
             b - a
         } else {

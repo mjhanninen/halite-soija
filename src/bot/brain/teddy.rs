@@ -17,7 +17,7 @@
 
 use std::borrow::Cow;
 
-use ua::{Action, Economic, Environment, Frame, Mask, State, Wave};
+use ua::{Action, Economic, Environment, Frame, Mask, Occupation, State, Wave};
 
 use brain::{Brain, Mold};
 use params::Params;
@@ -46,6 +46,22 @@ pub struct TeddyBrain
     environment: Environment,
 }
 
+fn compute_outward_utility(z: &Frame,
+                           avoid: &Mask,
+                           occupations: &Vec<Occupation>)
+    -> i16
+{
+    z.dijkstra_scan(|q: &Frame| {
+         if *q.on(avoid) {
+             None
+         } else {
+             Some(q.on(occupations).strength)
+         }
+     })
+     .map(|e: (i16, Frame)| e.0)
+     .sum()
+}
+
 impl Brain for TeddyBrain
 {
     fn tick(&mut self, state: &State) -> Vec<Action>
@@ -58,6 +74,17 @@ impl Brain for TeddyBrain
         let my_body = Mask::create(&self.environment.space, |z: &Frame| {
             z.on(&state.occupation_map).tag == me
         });
+        // Compute the utility frontier along the rim
+        let wave = Wave::from(&my_body);
+        if let Some(rim) = wave.front(0) {
+            for z in rim {
+                let _u = compute_outward_utility(&z,
+                                                 &my_body,
+                                                 &state.occupation_map);
+            }
+        } else {
+            // Yeah,
+        }
         //
         let gamma = 0.5_f32;
         let space = &self.environment.space;

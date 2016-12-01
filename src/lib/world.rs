@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use map::Map;
 use space::Space;
 
 pub type Tag = u8;
@@ -29,7 +28,7 @@ pub struct Environment
 {
     pub my_tag: Tag,
     pub space: Space,
-    pub production_map: Map<Production>,
+    pub production_map: Vec<Production>,
 }
 
 impl Environment
@@ -56,7 +55,7 @@ pub struct Occupation
 #[derive(Debug)]
 pub struct State
 {
-    pub occupation_map: Map<Occupation>,
+    pub occupation_map: Vec<Occupation>,
 }
 
 impl State

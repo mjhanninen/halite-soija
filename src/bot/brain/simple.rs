@@ -17,7 +17,7 @@
 
 use std::borrow::Cow;
 
-use ua::{Action, Dir, Environment, Frame, Map, Occupation, State};
+use ua::{Action, Dir, Environment, Frame, Occupation, State};
 
 use params::Params;
 use brain::{Brain, Mold};
@@ -48,13 +48,13 @@ pub struct SimpleBrain
 
 fn tick_site(origin: &Frame,
              src: &Occupation,
-             occupations: &Map<Occupation>,
+             occupations: &Vec<Occupation>,
              me: u8)
     -> Option<Dir>
 {
     for d in Dir::dirs() {
         let f = origin.adjacent_in(d);
-        let tgt = &occupations[f.ix()];
+        let tgt = f.on(occupations);
         if tgt.tag != me && tgt.strength < src.strength {
             return Some(*d);
         }

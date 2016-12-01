@@ -15,4 +15,23 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-pub type Map<T> = Vec<T>;
+pub trait Map<T>
+{
+    fn at(&self, z: usize) -> &T;
+    fn at_mut(&mut self, z: usize) -> &mut T;
+}
+
+impl<T> Map<T> for Vec<T>
+{
+    #[inline]
+    fn at(&self, z: usize) -> &T
+    {
+        &self[z]
+    }
+
+    #[inline]
+    fn at_mut(&mut self, z: usize) -> &mut T
+    {
+        &mut self[z]
+    }
+}

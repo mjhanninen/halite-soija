@@ -28,7 +28,7 @@ impl Economic for f32
     #[inline]
     fn perpetuity(self) -> f32
     {
-        assert!(0.0 <= self && self < 1.0);
+        debug_assert!(0.0 <= self && self < 1.0);
         self / (1.0 - self)
     }
 
@@ -47,7 +47,7 @@ impl Economic for f32
     #[inline]
     fn discount_of(self) -> f32
     {
-        assert!(self != -1.0);
+        debug_assert!(self != -1.0);
         1.0 / (1.0 + self)
     }
 }
@@ -57,7 +57,7 @@ impl Economic for f64
     #[inline]
     fn perpetuity(self) -> f64
     {
-        assert!(0.0 <= self && self < 1.0);
+        debug_assert!(0.0 <= self && self < 1.0);
         self / (1.0 - self)
     }
 
@@ -76,7 +76,7 @@ impl Economic for f64
     #[inline]
     fn discount_of(self) -> f64
     {
-        assert!(self != -1.0);
+        debug_assert!(self != -1.0);
         1.0 / (1.0 + self)
     }
 }
