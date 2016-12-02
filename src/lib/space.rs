@@ -20,6 +20,7 @@ use std::cmp::Ordering;
 use coord::Coord;
 use dir::Dir;
 use map::Map;
+use math::modular;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Space
@@ -658,68 +659,5 @@ mod test {
             1, 2, 3, 3, 2, 2,
         ];
         assert_eq!(wave.wave, expected);
-    }
-}
-
-mod modular {
-
-    #[inline]
-    pub fn add(a: u16, b: u16, m: u16) -> u16
-    {
-        debug_assert!(a < m && b < m);
-        let c = a + b;
-        if c < m {
-            c
-        } else {
-            c - m
-        }
-    }
-
-    #[inline]
-    pub fn sub(a: u16, b: u16, m: u16) -> u16
-    {
-        debug_assert!(a < m && b < m);
-        if a >= b {
-            a - b
-        } else {
-            a + m - b
-        }
-    }
-
-    #[inline]
-    pub fn dist(a: u16, b: u16, m: u16) -> u16
-    {
-        debug_assert!(a < m && b < m);
-        let d1 = if a < b {
-            b - a
-        } else {
-            a - b
-        };
-        let d2 = m - d1;
-        if d1 < d2 {
-            d1
-        } else {
-            d2
-        }
-    }
-
-    #[cfg(test)]
-    mod test {
-
-        #[test]
-        fn test_sub()
-        {
-            for m in 1..100 {
-                for a in 0..m {
-                    for b in 0..m {
-                        let c = super::sub(a, b, m);
-                        if c >= m {
-                            panic!("failed for a={}, b={}, m={}", a, b, m);
-                        }
-                        assert_eq!((c + b) % m, a);
-                    }
-                }
-            }
-        }
     }
 }
