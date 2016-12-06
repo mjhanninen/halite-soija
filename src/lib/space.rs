@@ -79,6 +79,22 @@ pub struct Frame<'a>
 
 impl<'a> Frame<'a>
 {
+    // XXX: This is a hack.  Many of the objects here maintain a reference to
+    // the containing space either directly or indirectly.  When the reference
+    // is indirect the life-time is often constrained by the life-time of the
+    // intermediating object which often is also very transient.  This hack
+    // enables me to code around these life-time problems but there is
+    // something really awkward about this.  I need to think about this
+    // critically.
+    #[inline]
+    pub fn hack<'b>(&self, space: &'b Space) -> Frame<'b>
+    {
+        Frame {
+            space: space,
+            origin: self.origin,
+        }
+    }
+
     #[inline]
     pub fn ix(&self) -> usize
     {
@@ -356,9 +372,14 @@ impl<'a> Iterator for L0_Neighbors<'a>
     }
 }
 
+// =============================================================================
+// Mask
+// -----------------------------------------------------------------------------
+
 pub struct Mask<'a>
 {
-    space: &'a Space,
+    // XXXX: Make this private again
+    pub space: &'a Space,
     mask: Vec<bool>,
 }
 
@@ -406,16 +427,39 @@ impl<'a> Mask<'a>
     }
 }
 
+#[cfg(test)]
+mod test {
+
+    use super::{Mask, Space};
+
+    #[test]
+    fn test_mask_creation()
+    {
+
+    }
+}
+
+// =============================================================================
+// Wave
+// -----------------------------------------------------------------------------
+
 pub struct Wave<'a>
 {
     space: &'a Space,
     // Image of wave front indices
+    // XXX: This could be made a simple bit vector
     wave: Vec<u8>,
     // Table of call indices belonging to fronts
     zs: Vec<u16>,
     // Table of indices in `fronts` where the next front starts
+    // XXX: this could be called the `breaks`
     stops: Vec<u16>,
 }
+
+/* Now, we also need a wave that has both a source and a sink.  Or emitter and
+ * absorber.  Even an individual cell can be an emitter.
+ *
+ * */
 
 impl<'a> Wave<'a>
 {
@@ -433,7 +477,7 @@ impl<'a> Wave<'a>
         }
     }
 
-    pub fn from(source: &'a Mask) -> Self
+    pub fn from(source: &'a Mask) -> Wave<'a>
     {
         let mut wave = Wave::new(source.space);
         wave.ripple(&source);
@@ -447,6 +491,8 @@ impl<'a> Wave<'a>
         let w = self.space.width() as u16;
         let h = self.space.height() as u16;
         // Initialize with seed
+        // TODO: Add here a sweep that would creat the absorber.  The cells
+        // that absorb could be
         let mut s = 0;
         self.stops.clear();
         for z in 0..self.wave.len() {

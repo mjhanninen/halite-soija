@@ -47,22 +47,41 @@ pub struct TeddyBrain
     environment: Environment,
 }
 
-const PROD_PER_TURN: f32 = 16.0;
-
-fn compute_outward_utility(source: &Frame,
-                           me: &Tag,
-                           gamma: f32,
-                           turns_left: u32,
-                           productions: &Vec<Production>,
-                           occupations: &Vec<Occupation>)
-    -> f32
+#[derive(Clone, Debug)]
+struct Par
 {
+    // The discount factor.
+    gamma: f32,
     // We measure the distance of each outward path in terms of strength
     // points we need to conquer along that path.  To convert that into a
     // number of turns we assume that we can produce fixed amount of
     // conquering strength per turn.  In reality that number varies over time
     // but this is start.
-    let gamma_dist = (gamma.ln() / PROD_PER_TURN).exp();
+    prod_per_turn: f32,
+}
+
+const PAR: Par = Par {
+    gamma: 0.5,
+    prod_per_turn: 16.0,
+};
+
+/// Computes the expected "outward" or "explorative" utility for the `source`
+/// cell that belongs to the rim of foreign cells surrounding the body of the
+/// bot.
+fn compute_outward_utility(source: &Frame,
+                           me: &Tag,
+                           productions: &Vec<Production>,
+                           occupations: &Vec<Occupation>,
+                           par: &Par,
+                           turns_left: i32)
+    -> f32
+{
+    debug_assert!(source.on(occupations).tag != *me);
+    let gamma_dist = (par.gamma.ln() / par.prod_per_turn).exp();
+    // XXX: These scans waste resources like buffers that could be re-used.
+    // If this approach works (i.e. the bot is better than its predecessor)
+    // change the architecture so that all the Dijkstra scans in one turn use
+    // the same buffer.
     source.dijkstra_scan(|z| {
               let occupation = z.on(occupations);
               if occupation.tag == *me {
@@ -72,45 +91,79 @@ fn compute_outward_utility(source: &Frame,
               }
           })
           .map(|(dist, z)| {
-              let turns_till_capture =
-                  (dist as f32 / PROD_PER_TURN).ceil() as i32;
+              let turns_till_capture = (dist as f32 / par.prod_per_turn)
+                  .ceil() as i32;
               let capacity = *z.on(productions) as f32;
-              let output = gamma.annuity(turns_left as i32 -
-                                         turns_till_capture) *
+              let output = par.gamma
+                              .annuity(turns_left as i32 - turns_till_capture) *
                            capacity;
               gamma_dist.discount(dist as i32) * output
           })
           .sum()
 }
 
+
+/// Computes the expected utilities for conquering any of the cells belonging
+/// to the rim of foreign or unoccupied cells immediately surroinding the body
+/// of the bot.
+fn compute_rim_utility<'a>(who: &Tag,
+                           body: &'a Mask,
+                           productions: &Vec<Production>,
+                           occupations: &Vec<Occupation>,
+                           par: &Par,
+                           turns_left: i32)
+    -> Vec<(Frame<'a>, f32)>
+{
+    debug_assert!(turns_left >= 0);
+    // XXX: Here we need only the first wavefront. The wave function should be
+    // altered so that the wave can be produced only partially thus avoiding
+    // wasting work.
+    let wave = Wave::from(body);
+    if let Some(rim) = wave.front(1) {
+        rim.map(|z| {
+               let u = compute_outward_utility(&z,
+                                               who,
+                                               productions,
+                                               occupations,
+                                               par,
+                                               turns_left);
+
+               (z.hack(body.space), u)
+           })
+           .collect::<Vec<_>>()
+    } else {
+        vec![]
+    }
+}
+
+use ua::Coord;
+use std::collections::BTreeMap;
+
+type ActioMap = BTreeMap<Coord, (Action, f32)>;
+
 impl Brain for TeddyBrain
 {
     fn tick(&mut self, state: &State) -> Vec<Action>
     {
-        let turns_left = self.environment.total_turns - state.turn;
-        let gamma = 0.5_f32;
+        debug_assert!(state.turn <= self.environment.total_turns);
+        let turns_left = (self.environment.total_turns - state.turn) as i32;
         let me = self.environment.my_tag;
         let my_body = Mask::create(&self.environment.space, |z: &Frame| {
             z.on(&state.occupation_map).tag == me
         });
-        // Compute the expected utilities along the rim consisting of cells
-        // immediately adjacent to my bot.
-        let wave = Wave::from(&my_body);
-        if let Some(rim) = wave.front(1) {
-            rim.map(|z| {
-                   let utility = compute_outward_utility(&z,
-                                                         &me,
-                                                         gamma,
-                                                         turns_left,
-                                                         &self.environment
-                                                              .production_map,
-                                                         &state.occupation_map);
-
-                   (z, utility)
-               })
-               .collect::<Vec<_>>();
-        }
-        // Do nothing
+        let _rim = compute_rim_utility(&me,
+                                       &my_body,
+                                       &self.environment.production_map,
+                                       &state.occupation_map,
+                                       &PAR,
+                                       turns_left);
+        // For each of those cells along the rim compute a wave that sweeps
+        // across the bot internals and contracts to the cell in question.
+        //
+        // Each wave will assign an action-reward pair for all internal cells.
+        //
+        // Once the whole rim has been porcessed in this way each internal
+        // cell will pick its utility maximizing action.
         vec![]
     }
 }
