@@ -408,6 +408,16 @@ impl<'a> Mask<'a>
         }
     }
 
+    pub fn singleton(frame: &'a Frame) -> Self
+    {
+        let mut mask = vec![false; frame.space.len()];
+        mask[frame.origin as usize] = true;
+        Mask {
+            space: frame.space,
+            mask: mask,
+        }
+    }
+
     pub fn create<F>(space: &'a Space, f: F) -> Self
         where F: Fn(&Frame) -> bool
     {
@@ -424,18 +434,6 @@ impl<'a> Mask<'a>
             space: space,
             mask: mask,
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-
-    use super::{Mask, Space};
-
-    #[test]
-    fn test_mask_creation()
-    {
-
     }
 }
 
@@ -588,38 +586,12 @@ impl<'a> Wave<'a>
         }
     }
 
-    pub fn contraction(&'a self) -> Contraction<'a>
-    {
-        Contraction { wave: &self }
-    }
 
-    pub fn expansion(&'a self) -> Expansion<'a>
-    {
-        Expansion { wave: &self }
+    pub fn between(_source: &Frame, _sink: &Mask) -> Self {
+        unimplemented!();
     }
 }
 
-#[allow(dead_code)]
-pub struct Contraction<'a>
-{
-    wave: &'a Wave<'a>,
-}
-
-impl<'a> Iterator for Contraction<'a>
-{
-    type Item = Frame<'a>;
-
-    fn next(&mut self) -> Option<Self::Item>
-    {
-        None
-    }
-}
-
-#[allow(dead_code)]
-pub struct Expansion<'a>
-{
-    wave: &'a Wave<'a>,
-}
 
 pub struct Front<'a>
 {

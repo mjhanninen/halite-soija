@@ -16,9 +16,10 @@
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 
-use ua::{Action, Economic, Environment, Frame, Mask, Occupation, Production,
-         State, Tag, Wave};
+use ua::{Action, Choice, Economic, Environment, Frame, Mask, Occupation,
+         Production, State, Tag, Wave};
 
 use brain::{Brain, Mold};
 use params::Params;
@@ -130,16 +131,82 @@ fn compute_rim_utility<'a>(who: &Tag,
 
                (z.hack(body.space), u)
            })
-           .collect::<Vec<_>>()
+           .collect()
     } else {
         vec![]
     }
 }
 
-use ua::Coord;
-use std::collections::BTreeMap;
+fn compute_action_utilities<'a>(choices: &mut BTreeMap<Frame<'a>, Choice<f32>>,
+                                who: &Tag,
+                                body: &'a Mask,
+                                productions: &Vec<Production>,
+                                occupations: &Vec<Occupation>,
+                                rim_utilities: &Vec<(Frame<'a>, f32)>,
+                                par: &Par)
+{
+    let sink = body;
+    let mut zs: Vec<Frame<'a>> = Vec::new();
+    for &(ref target, ref fwd_utility) in rim_utilities.iter() {
+        debug_assert!(target.on(occupations).tag != *who);
+        // Here `r` is the "resistance" faced when attempting to occupy the
+        // target cell.  Currently it is just the strength but later on we
+        // might want to change it to some functional form the strength.
+        // Maybe of time too.  Note that this should be consistent with the
+        // resistance used in calculating the forward utilities for the rim
+        // cells.  Currently this probably isn't the case.
+        let r = target.on(occupations).strength;
+        // Here `s` is the total strength that will be channeled to the target
+        // frame if the wave is set into (backwards) motion from the current
+        // front right now.
+        let mut s = 0;
+        // Here `p` is the productive capacity of the partial wave up to this
+        // front.
+        let mut p = 0;
+        // Propagate the wave from the target cell until the frame contains
+        // enough strength to overcome the resistance.
+        zs.clear();
+        let source = Mask::singleton(&target);
+        let mut wave = Wave::between(&source, sink);
+        for t in 2.. {
+            let front = wave.front(t).unwrap();
+            s += p;
+            for cell in front {
+                debug_assert!(cell.on(occupations).tag == *who);
+                s += cell.on(occupations).strength;
+                p += *cell.on(productions);
+            }
+            if s > r {
+                let u = fwd_utility * par.gamma.discount(t as i32);
+                for z in zs.iter() {
+                    use std::collections::btree_map::Entry;
+                    match choices.entry(z.clone()) {
+                        Entry::Vacant(e) => {}
+                        Entry::Occupied(e) => {}
+                    }
+                }
+                break;
+            }
+        }
+    }
+}
 
-type ActioMap = BTreeMap<Coord, (Action, f32)>;
+fn select_actions<'a>(utilities: &mut BTreeMap<Frame<'a>, Choice<f32>>)
+    -> Vec<Action>
+{
+    // As a first stab at the action selection we just select the action that
+    // seems to yield the maximal utility for each cell without considering
+    // the "externailities" of that action.
+    //
+    // Later we might improve the algorithm to, yes, greedily pick the maximal
+    // utility yielding actions but then updating the utilities of the
+    // "neighboring" actions so that the cost from conflicting actions is
+    // minimized.
+    //
+    utilities.iter()
+             .map(|(frame, choice)| (frame.coord(), choice.find_max_action()))
+             .collect::<Vec<_>>()
+}
 
 impl Brain for TeddyBrain
 {
@@ -151,19 +218,21 @@ impl Brain for TeddyBrain
         let my_body = Mask::create(&self.environment.space, |z: &Frame| {
             z.on(&state.occupation_map).tag == me
         });
-        let _rim = compute_rim_utility(&me,
-                                       &my_body,
-                                       &self.environment.production_map,
-                                       &state.occupation_map,
-                                       &PAR,
-                                       turns_left);
-        // For each of those cells along the rim compute a wave that sweeps
-        // across the bot internals and contracts to the cell in question.
-        //
-        // Each wave will assign an action-reward pair for all internal cells.
-        //
-        // Once the whole rim has been porcessed in this way each internal
-        // cell will pick its utility maximizing action.
-        vec![]
+        let rim_utilities = compute_rim_utility(&me,
+                                                &my_body,
+                                                &self.environment
+                                                     .production_map,
+                                                &state.occupation_map,
+                                                &PAR,
+                                                turns_left);
+        let mut utilities = BTreeMap::new();
+        compute_action_utilities(&mut utilities,
+                                 &me,
+                                 &my_body,
+                                 &self.environment.production_map,
+                                 &state.occupation_map,
+                                 &rim_utilities,
+                                 &PAR);
+        select_actions(&mut utilities)
     }
 }

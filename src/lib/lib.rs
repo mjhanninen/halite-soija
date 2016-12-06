@@ -26,7 +26,7 @@ pub mod space;
 pub mod util;
 pub mod world;
 
-pub use action::Action;
+pub use action::{Action, Choice};
 pub use coord::Coord;
 pub use dir::Dir;
 pub use map::Map;
