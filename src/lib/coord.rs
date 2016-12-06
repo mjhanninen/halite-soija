@@ -17,7 +17,7 @@
 
 use dir::{Dir, Dirs};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Coord
 {
     pub x: i16,

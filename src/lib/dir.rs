@@ -17,7 +17,7 @@
 
 use std::slice;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Dir
 {
     North,
