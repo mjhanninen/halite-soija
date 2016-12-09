@@ -23,6 +23,13 @@ use super::{Frame, Mask, Space};
 //   have reusable state so that we don't have to allocate for each wave
 //   separately.  Secondly it has to partial in sense that I don't have to
 //   compute the full wave if I need only the couple first wave fronts.
+//
+// So we could have:
+//
+// * Wave that contains the whole wave state.
+//
+// * Wavefronts iterator over the fronts of the wave. The fronts would
+//   generated on demand.
 
 pub struct Wave<'a>
 {
@@ -56,11 +63,20 @@ impl<'a> Wave<'a>
     pub fn from(source: &'a Mask) -> Wave<'a>
     {
         let mut wave = Wave::new(source.space);
-        wave.ripple(&source);
+        wave.ripple(source, None);
         wave
     }
 
-    pub fn ripple(&mut self, seed: &Mask)
+    pub fn between(source: &'a Mask, sink: &'a Mask) -> Wave<'a>
+    {
+        let mut wave = Wave::new(source.space);
+        wave.ripple(&source, Some(sink));
+        wave
+    }
+
+    fn ripple(&mut self,
+              seed: &Mask,
+              sink: Option<&Mask>)
     {
         debug_assert_eq!(self.space, seed.space);
         let n = self.space.len() as u16;
@@ -71,13 +87,27 @@ impl<'a> Wave<'a>
         // that absorb could be
         let mut s = 0;
         self.stops.clear();
-        for z in 0..self.wave.len() {
-            self.wave[z] = if seed.mask[z] {
-                self.zs[s] = z as u16;
-                s += 1;
-                1
-            } else {
-                0
+        if let Some(sink) = sink {
+            for z in 0..self.wave.len() {
+                self.wave[z] = if seed.mask[z] {
+                    self.zs[s] = z as u16;
+                    s += 1;
+                    1
+                } else if sink.mask[z] {
+                    255
+                } else {
+                    0
+                }
+            }
+        } else {
+            for z in 0..self.wave.len() {
+                self.wave[z] = if seed.mask[z] {
+                    self.zs[s] = z as u16;
+                    s += 1;
+                    1
+                } else {
+                    0
+                }
             }
         }
         self.stops.push(s as u16);
@@ -162,11 +192,6 @@ impl<'a> Wave<'a>
         } else {
             None
         }
-    }
-
-    pub fn between(_source: &Frame, _sink: &Mask) -> Self
-    {
-        unimplemented!();
     }
 }
 
