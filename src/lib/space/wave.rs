@@ -41,7 +41,7 @@ pub struct Wave<'a>
     // XXX: This could be made a simple bit vector
     wave: Vec<u8>,
     // Table of call indices belonging to fronts
-    zs: Vec<u16>,
+    ixs: Vec<u16>,
     // Table of indices in `fronts` where the next front starts
     // XXX: this could be called the `breaks`
     stops: Vec<u16>,
@@ -58,7 +58,7 @@ impl<'a> Wave<'a>
         Wave {
             space: space,
             wave: vec![0; n],
-            zs: vec![0; n],
+            ixs: vec![0; n],
             stops: Vec::with_capacity(d as usize),
         }
     }
@@ -88,21 +88,21 @@ impl<'a> Wave<'a>
         self.stops.clear();
         if let Some(sink) = sink {
             debug_assert_eq!(self.space, sink.space);
-            for z in 0..self.wave.len() {
-                self.wave[z] = if *source.at(z) {
-                    self.zs[s] = z as u16;
+            for ix in 0..self.wave.len() {
+                self.wave[ix] = if *source.at(ix) {
+                    self.ixs[s] = ix as u16;
                     s += 1;
                     1
-                } else if *sink.at(z) {
+                } else if *sink.at(ix) {
                     255
                 } else {
                     0
                 }
             }
         } else {
-            for z in 0..self.wave.len() {
-                self.wave[z] = if *source.at(z) {
-                    self.zs[s] = z as u16;
+            for ix in 0..self.wave.len() {
+                self.wave[ix] = if *source.at(ix) {
+                    self.ixs[s] = ix as u16;
                     s += 1;
                     1
                 } else {
@@ -116,51 +116,51 @@ impl<'a> Wave<'a>
         for t in 2.. {
             let s0 = s;
             for i in a..s0 {
-                let z = self.zs[i];
-                let y = z / w;
-                let x = z - w * y;
+                let ix = self.ixs[i];
+                let y = ix / w;
+                let x = ix - w * y;
                 // Expand westwards
-                let z_w = if x > 0 {
-                    z - 1
+                let ix_w = if x > 0 {
+                    ix - 1
                 } else {
-                    z + w - 1
+                    ix + w - 1
                 } as usize;
-                if self.wave[z_w] == 0 {
-                    self.wave[z_w] = t;
-                    self.zs[s] = z_w as u16;
+                if self.wave[ix_w] == 0 {
+                    self.wave[ix_w] = t;
+                    self.ixs[s] = ix_w as u16;
                     s += 1;
                 }
                 // Expand eastwards
-                let z_e = if x + 1 < w {
-                    z + 1
+                let ix_e = if x + 1 < w {
+                    ix + 1
                 } else {
-                    z - x
+                    ix - x
                 } as usize;
-                if self.wave[z_e] == 0 {
-                    self.wave[z_e] = t;
-                    self.zs[s] = z_e as u16;
+                if self.wave[ix_e] == 0 {
+                    self.wave[ix_e] = t;
+                    self.ixs[s] = ix_e as u16;
                     s += 1;
                 }
                 // Expand northwards
-                let z_n = if y > 0 {
-                    z - w
+                let ix_n = if y > 0 {
+                    ix - w
                 } else {
-                    z + n - w
+                    ix + n - w
                 } as usize;
-                if self.wave[z_n] == 0 {
-                    self.wave[z_n] = t;
-                    self.zs[s] = z_n as u16;
+                if self.wave[ix_n] == 0 {
+                    self.wave[ix_n] = t;
+                    self.ixs[s] = ix_n as u16;
                     s += 1;
                 }
                 // Expand southwards
-                let z_s = if y + 1 < h {
-                    z + w
+                let ix_s = if y + 1 < h {
+                    ix + w
                 } else {
                     x
                 } as usize;
-                if self.wave[z_s] == 0 {
-                    self.wave[z_s] = t;
-                    self.zs[s] = z_s as u16;
+                if self.wave[ix_s] == 0 {
+                    self.wave[ix_s] = t;
+                    self.ixs[s] = ix_s as u16;
                     s += 1;
                 }
             }
@@ -209,10 +209,10 @@ impl<'a> Iterator for Front<'a>
     fn next(&mut self) -> Option<Self::Item>
     {
         if self.start < self.stop {
-            let z = Frame::new(self.wave.space,
-                               self.wave.zs[self.start] as usize);
+            let ix = Frame::new(self.wave.space,
+                                self.wave.ixs[self.start] as usize);
             self.start += 1;
-            Some(z)
+            Some(ix)
         } else {
             None
         }

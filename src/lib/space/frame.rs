@@ -26,7 +26,7 @@ use space::Space;
 pub struct Frame<'a>
 {
     space: &'a Space,
-    origin: u16,
+    ix: u16,
 }
 
 impl<'a> Frame<'a>
@@ -43,7 +43,7 @@ impl<'a> Frame<'a>
     {
         Frame {
             space: space,
-            origin: self.origin,
+            ix: self.ix,
         }
     }
 
@@ -52,7 +52,7 @@ impl<'a> Frame<'a>
     {
         Frame {
             space: space,
-            origin: ix as u16,
+            ix: ix as u16,
         }
     }
 
@@ -65,7 +65,7 @@ impl<'a> Frame<'a>
     #[inline]
     pub fn ix(&self) -> usize
     {
-        self.origin as usize
+        self.ix as usize
     }
 
     #[inline]
@@ -91,7 +91,7 @@ impl<'a> Frame<'a>
     #[inline]
     pub fn adjacent_in(&self, dir: &Dir) -> Frame<'a>
     {
-        Frame { origin: self.space.adjacent_ix(self.ix(), dir) as u16, ..*self }
+        Frame { ix: self.space.adjacent_ix(self.ix(), dir) as u16, ..*self }
     }
 
     #[inline]
@@ -137,7 +137,7 @@ impl<'a> Iterator for Frames<'a>
         if self.start != self.stop {
             let f = Frame {
                 space: self.space,
-                origin: self.start,
+                ix: self.start,
             };
             self.start += 1;
             Some(f)

@@ -29,15 +29,15 @@ pub struct Mask<'a>
 impl<'a> Map<bool> for Mask<'a>
 {
     #[inline]
-    fn at(&self, z: usize) -> &bool
+    fn at(&self, ix: usize) -> &bool
     {
-        &self.mask[z]
+        &self.mask[ix]
     }
 
     #[inline]
-    fn at_mut(&mut self, z: usize) -> &mut bool
+    fn at_mut(&mut self, ix: usize) -> &mut bool
     {
-        &mut self.mask[z]
+        &mut self.mask[ix]
     }
 }
 

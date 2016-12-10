@@ -17,21 +17,21 @@
 
 pub trait Map<T>
 {
-    fn at(&self, z: usize) -> &T;
-    fn at_mut(&mut self, z: usize) -> &mut T;
+    fn at(&self, ix: usize) -> &T;
+    fn at_mut(&mut self, ix: usize) -> &mut T;
 }
 
 impl<T> Map<T> for Vec<T>
 {
     #[inline]
-    fn at(&self, z: usize) -> &T
+    fn at(&self, ix: usize) -> &T
     {
-        &self[z]
+        &self[ix]
     }
 
     #[inline]
-    fn at_mut(&mut self, z: usize) -> &mut T
+    fn at_mut(&mut self, ix: usize) -> &mut T
     {
-        &mut self[z]
+        &mut self[ix]
     }
 }
