@@ -56,14 +56,6 @@ pub struct LoneBrain
 
 pub struct LoneMold;
 
-impl LoneMold
-{
-    pub fn new() -> Self
-    {
-        LoneMold
-    }
-}
-
 impl Mold for LoneMold
 {
     fn name(&self) -> Cow<str>
