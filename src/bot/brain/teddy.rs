@@ -17,7 +17,7 @@
 
 use std::borrow::Cow;
 
-use ua::{Action, Environment, State};
+use ua::{Action, Economic, Environment, Frame, Mask, State, Wave};
 
 use brain::{Brain, Mold};
 use params::Params;
@@ -28,11 +28,11 @@ impl Mold for TeddyMold
 {
     fn reanimate(&self,
                  _params: &Params,
-                 _environment: Environment,
+                 environment: Environment,
                  _init_state: &State)
         -> Box<Brain>
     {
-        Box::new(TeddyBrain)
+        Box::new(TeddyBrain { environment: environment })
     }
 
     fn name(&self) -> Cow<str>
@@ -41,12 +41,42 @@ impl Mold for TeddyMold
     }
 }
 
-pub struct TeddyBrain;
+pub struct TeddyBrain
+{
+    environment: Environment,
+}
 
 impl Brain for TeddyBrain
 {
-    fn tick(&mut self, _state: &State) -> Vec<Action>
+    fn tick(&mut self, state: &State) -> Vec<Action>
     {
+        // 1. Update the mask of the current occupied area and the rim.
+        //
+        // 2. Generate a wave from the current rim outwards and then compute
+        //    utilities for the rim cells by rolling the wave back.
+        let me = self.environment.my_tag;
+        let my_body = Mask::create(&self.environment.space, |z: &Frame| {
+            z.on(&state.occupation_map).tag == me
+        });
+        //
+        let gamma = 0.5_f32;
+        let space = &self.environment.space;
+        let mut my_extensions = Wave::new(space);
+        my_extensions.ripple(&my_body);
+        let mut prods = vec![0.0_f32; space.len()];
+        for z in my_extensions.contraction() {
+            /* let max_succ_reward = z.successors().map(|s: &Frame| {
+             * s.on(&prods)
+             * }).max();
+             * */
+            let max_succ_reward = 0.0;
+            let curr_reward = *z.on(&self.environment.production_map) as f32 *
+                              gamma.perpetuity();
+            let resistance = z.on(&state.occupation_map).strength;
+            *z.on_mut(&mut prods) = gamma.discount(resistance as i32) *
+                                    (curr_reward + max_succ_reward);
+        }
+        // Do nothing
         vec![]
     }
 }
