@@ -31,5 +31,5 @@ pub use coord::Coord;
 pub use dir::Dir;
 pub use map::Map;
 pub use math::Economic;
-pub use space::{Frame, Space};
+pub use space::{Frame, Mask, Space, Wave};
 pub use world::{Environment, Occupation, Production, State, Strength, Tag};

@@ -251,6 +251,240 @@ impl<'a> Iterator for L0_Neighbors<'a>
     }
 }
 
+pub struct Mask<'a>
+{
+    space: &'a Space,
+    mask: Vec<bool>,
+}
+
+impl<'a> Mask<'a>
+{
+    pub fn new(space: &'a Space) -> Self
+    {
+        Mask {
+            space: space,
+            mask: vec![false; space.len()],
+        }
+    }
+
+    pub fn create<F>(space: &'a Space, f: F) -> Self
+        where F: Fn(&Frame) -> bool
+    {
+        let mut mask = Vec::with_capacity(space.len());
+        let mut p = Frame {
+            space: space,
+            origin: 0,
+        };
+        for i in 0..space.len() {
+            p.origin = i as u16;
+            mask.push(f(&p));
+        }
+        Mask {
+            space: space,
+            mask: mask,
+        }
+    }
+}
+
+pub struct Wave<'a>
+{
+    space: &'a Space,
+    // Image of wave front indices
+    wave: Vec<u8>,
+    // Table of call indices belonging to fronts
+    fronts: Vec<u16>,
+    // Table of indices in `fronts` where the next front starts
+    starts: Vec<u16>,
+}
+
+impl<'a> Wave<'a>
+{
+    pub fn new(space: &'a Space) -> Self
+    {
+        // A wave cannot reach further than this. Actually we should cut this
+        // distance by half.
+        let d = space.width() + space.height();
+        let n = space.len();
+        Wave {
+            space: space,
+            wave: vec![0; n],
+            fronts: vec![0; n],
+            starts: Vec::with_capacity(d as usize),
+        }
+    }
+
+    pub fn ripple(&mut self, seed: &Mask)
+    {
+        assert_eq!(self.space, seed.space);
+        let n = self.space.len() as u16;
+        let w = self.space.width() as u16;
+        let h = self.space.height() as u16;
+        // Initialize with seed
+        let mut s = 0;
+        self.starts.clear();
+        for z in 0..self.wave.len() {
+            self.wave[z] = if seed.mask[z] {
+                self.fronts[s] = z as u16;
+                s += 1;
+                1
+            } else {
+                0
+            }
+        }
+        self.starts.push(s as u16);
+        // Expand the wave front
+        let mut a = 0;
+        for t in 2.. {
+            let s0 = s;
+            for i in a..s0 {
+                let z = self.fronts[i];
+                let y = z / w;
+                let x = z - w * y;
+                // Expand westwards
+                let z_w = if x > 0 {
+                    z - 1
+                } else {
+                    z + w - 1
+                } as usize;
+                if self.wave[z_w] == 0 {
+                    self.wave[z_w] = t;
+                    self.fronts[s] = z_w as u16;
+                    s += 1;
+                }
+                // Expand eastwards
+                let z_e = if x + 1 < w {
+                    z + 1
+                } else {
+                    z - x
+                } as usize;
+                if self.wave[z_e] == 0 {
+                    self.wave[z_e] = t;
+                    self.fronts[s] = z_e as u16;
+                    s += 1;
+                }
+                // Expand northwards
+                let z_n = if y > 0 {
+                    z - w
+                } else {
+                    z + n - w
+                } as usize;
+                if self.wave[z_n] == 0 {
+                    self.wave[z_n] = t;
+                    self.fronts[s] = z_n as u16;
+                    s += 1;
+                }
+                // Expand southwards
+                let z_s = if y + 1 < h {
+                    z + w
+                } else {
+                    x
+                } as usize;
+                if self.wave[z_s] == 0 {
+                    self.wave[z_s] = t;
+                    self.fronts[s] = z_s as u16;
+                    s += 1;
+                }
+            }
+            // Did we expand the wave?
+            if s > s0 {
+                self.starts.push(s as u16);
+                a = s0;
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub fn contraction(&'a self) -> Contraction<'a>
+    {
+        Contraction { wave: &self }
+    }
+
+    pub fn expansion(&'a self) -> Expansion<'a>
+    {
+        Expansion { wave: &self }
+    }
+}
+
+pub struct Contraction<'a>
+{
+    wave: &'a Wave<'a>,
+}
+
+impl<'a> Iterator for Contraction<'a>
+{
+    type Item = Frame<'a>;
+
+    fn next(&mut self) -> Option<Self::Item>
+    {
+        None
+    }
+}
+
+pub struct Expansion<'a>
+{
+    wave: &'a Wave<'a>,
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    fn test_wave_1() {
+        let space = Space::with_dims(6, 5);
+        let map = vec![
+            0, 0, 0, 0, 0, 0,
+            0, 0, 1, 0, 0, 0,
+            0, 0, 0, 1, 0, 0,
+            0, 1, 1, 1, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
+        let seed = Mask::create(&space, |f: &Frame| {
+            *f.on(&map) == 1
+        });
+        let mut wave = Wave::new(&space);
+        wave.ripple(&seed);
+        let expected = vec![
+            4, 3, 2, 3, 4, 5,
+            3, 2, 1, 2, 3, 4,
+            3, 2, 2, 1, 2, 3,
+            2, 1, 1, 1, 2, 3,
+            3, 2, 2, 2, 3, 4,
+        ];
+        assert_eq!(wave.wave, expected);
+    }
+
+    // The same as test_wave_1 except panned.
+    #[test]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    fn test_wave_2() {
+        let space = Space::with_dims(6, 5);
+        let map = vec![
+            1, 0, 0, 0, 1, 1,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 1,
+            1, 0, 0, 0, 0, 0,
+        ];
+        let seed = Mask::create(&space, |f: &Frame| {
+            *f.on(&map) == 1
+        });
+        let mut wave = Wave::new(&space);
+        wave.ripple(&seed);
+        let expected = vec![
+            1, 2, 3, 2, 1, 1,
+            2, 3, 4, 3, 2, 2,
+            3, 4, 5, 4, 3, 2,
+            2, 3, 4, 3, 2, 1,
+            1, 2, 3, 3, 2, 2,
+        ];
+        assert_eq!(wave.wave, expected);
+    }
+}
+
 mod modular {
 
     #[inline]
