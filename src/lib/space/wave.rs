@@ -15,7 +15,8 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Frame, Space};
+use space::Space;
+use space::frame::Frame;
 use space::mask::Mask;
 use map::Map;
 
@@ -209,10 +210,8 @@ impl<'a> Iterator for Front<'a>
     fn next(&mut self) -> Option<Self::Item>
     {
         if self.start < self.stop {
-            let z = Frame {
-                space: self.wave.space,
-                origin: self.wave.zs[self.start],
-            };
+            let z = Frame::new(self.wave.space,
+                               self.wave.zs[self.start] as usize);
             self.start += 1;
             Some(z)
         } else {

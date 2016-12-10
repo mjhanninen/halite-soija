@@ -20,7 +20,7 @@
 use std::collections::BinaryHeap;
 
 use dir::Dir;
-use super::Frame;
+use space::frame::Frame;
 
 /// Uniform-cost scan over the space.
 pub struct DijsktraScan<'a, F>
@@ -35,13 +35,13 @@ impl<'a> Frame<'a>
     pub fn dijkstra_scan<F>(&self, cost_fn: F) -> DijsktraScan<F>
         where F: Fn(&Frame) -> Option<i16>
     {
-        let mut queue = BinaryHeap::with_capacity(self.space.len() * 2);
+        let mut queue = BinaryHeap::with_capacity(self.space().len() * 2);
         if let Some(init_cost) = cost_fn(&self) {
             queue.push((-init_cost, self.clone()));
         }
         DijsktraScan {
             cost_fn: cost_fn,
-            visited: vec![false; self.space.len()],
+            visited: vec![false; self.space().len()],
             // The upper bound of the priority queue is 2 * width * height;
             // think of the general case to add three new cell to the search
             // queue you have to consume one cell from the existing queue.

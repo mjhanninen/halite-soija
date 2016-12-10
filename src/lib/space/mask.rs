@@ -16,7 +16,8 @@
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
 use map::Map;
-use space::{Frame, Space};
+use space::Space;
+use space::frame::Frame;
 
 pub struct Mask<'a>
 {
@@ -52,10 +53,10 @@ impl<'a> Mask<'a>
 
     pub fn singleton(frame: &'a Frame) -> Self
     {
-        let mut mask = vec![false; frame.space.len()];
-        mask[frame.origin as usize] = true;
+        let mut mask = vec![false; frame.space().len()];
+        mask[frame.ix()] = true;
         Mask {
-            space: frame.space,
+            space: frame.space(),
             mask: mask,
         }
     }
@@ -64,13 +65,8 @@ impl<'a> Mask<'a>
         where F: Fn(&Frame) -> bool
     {
         let mut mask = Vec::with_capacity(space.len());
-        let mut p = Frame {
-            space: space,
-            origin: 0,
-        };
-        for i in 0..space.len() {
-            p.origin = i as u16;
-            mask.push(f(&p));
+        for ix in 0..space.len() {
+            mask.push(f(&Frame::new(space, ix)));
         }
         Mask {
             space: space,
