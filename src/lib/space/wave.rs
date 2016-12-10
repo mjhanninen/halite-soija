@@ -77,20 +77,19 @@ impl<'a> Wave<'a>
         wave
     }
 
-    fn ripple(&mut self, seed: &Mask, sink: Option<&Mask>)
+    fn ripple(&mut self, source: &Mask, sink: Option<&Mask>)
     {
-        debug_assert_eq!(self.space, seed.space);
+        debug_assert_eq!(self.space, source.space);
         let n = self.space.len() as u16;
         let w = self.space.width() as u16;
         let h = self.space.height() as u16;
-        // Initialize with seed
-        // TODO: Add here a sweep that would creat the absorber.  The cells
-        // that absorb could be
+        // Initialize with the wave source and sink
         let mut s = 0;
         self.stops.clear();
         if let Some(sink) = sink {
+            debug_assert_eq!(self.space, sink.space);
             for z in 0..self.wave.len() {
-                self.wave[z] = if *seed.at(z) {
+                self.wave[z] = if *source.at(z) {
                     self.zs[s] = z as u16;
                     s += 1;
                     1
@@ -102,7 +101,7 @@ impl<'a> Wave<'a>
             }
         } else {
             for z in 0..self.wave.len() {
-                self.wave[z] = if *seed.at(z) {
+                self.wave[z] = if *source.at(z) {
                     self.zs[s] = z as u16;
                     s += 1;
                     1
@@ -223,6 +222,9 @@ impl<'a> Iterator for Front<'a>
 #[cfg(test)]
 mod test {
 
+    use space::Space;
+    use space::frame::Frame;
+    use space::mask::Mask;
     use super::*;
 
     #[test]
@@ -240,7 +242,7 @@ mod test {
             *f.on(&map) == 1
         });
         let mut wave = Wave::new(&space);
-        wave.ripple(&seed);
+        wave.ripple(&seed, None);
         let expected = vec![
             4, 3, 2, 3, 4, 5,
             3, 2, 1, 2, 3, 4,
@@ -267,7 +269,7 @@ mod test {
             *f.on(&map) == 1
         });
         let mut wave = Wave::new(&space);
-        wave.ripple(&seed);
+        wave.ripple(&seed, None);
         let expected = vec![
             1, 2, 3, 2, 1, 1,
             2, 3, 4, 3, 2, 2,
