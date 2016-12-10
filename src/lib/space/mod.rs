@@ -65,14 +65,27 @@ impl Space
         }
     }
 
+    #[inline]
     pub fn width(&self) -> i16
     {
         self.w as i16
     }
 
+    #[inline]
     pub fn height(&self) -> i16
     {
         self.h as i16
+    }
+
+    #[inline]
+    pub fn coord_of(&self, ix: usize) -> Coord
+    {
+        let y = ix / self.w as usize;
+        let x = ix - y * self.w as usize;
+        Coord {
+            x: x as i16,
+            y: y as i16,
+        }
     }
 }
 
@@ -124,12 +137,7 @@ impl<'a> Frame<'a>
     #[inline]
     pub fn coord(&self) -> Coord
     {
-        let y = self.origin / self.space.w;
-        let x = self.origin - y * self.space.w;
-        Coord {
-            x: x as i16,
-            y: y as i16,
-        }
+        self.space.coord_of(self.ix())
     }
 
     #[inline]
