@@ -23,6 +23,7 @@ use map::Map;
 use math::modular;
 
 pub mod dijkstra;
+pub mod mask;
 pub mod wave;
 
 pub use self::dijkstra::DijsktraScan;
@@ -301,70 +302,5 @@ impl<'a> Iterator for L0_Neighbors<'a>
             })
         }
 
-    }
-}
-
-// =============================================================================
-// Mask
-// -----------------------------------------------------------------------------
-
-pub struct Mask<'a>
-{
-    // XXXX: Make this private again
-    pub space: &'a Space,
-    mask: Vec<bool>,
-}
-
-impl<'a> Map<bool> for Mask<'a>
-{
-    #[inline]
-    fn at(&self, z: usize) -> &bool
-    {
-        &self.mask[z]
-    }
-
-    #[inline]
-    fn at_mut(&mut self, z: usize) -> &mut bool
-    {
-        &mut self.mask[z]
-    }
-}
-
-impl<'a> Mask<'a>
-{
-    pub fn new(space: &'a Space) -> Self
-    {
-        Mask {
-            space: space,
-            mask: vec![false; space.len()],
-        }
-    }
-
-    pub fn singleton(frame: &'a Frame) -> Self
-    {
-        let mut mask = vec![false; frame.space.len()];
-        mask[frame.origin as usize] = true;
-        Mask {
-            space: frame.space,
-            mask: mask,
-        }
-    }
-
-    pub fn create<F>(space: &'a Space, f: F) -> Self
-        where F: Fn(&Frame) -> bool
-    {
-        let mut mask = Vec::with_capacity(space.len());
-        let mut p = Frame {
-            space: space,
-            origin: 0,
-        };
-        for i in 0..space.len() {
-            p.origin = i as u16;
-            mask.push(f(&p));
-        }
-        Mask {
-            space: space,
-            mask: mask,
-        }
     }
 }

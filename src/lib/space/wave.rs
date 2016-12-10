@@ -15,7 +15,9 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{Frame, Mask, Space};
+use super::{Frame, Space};
+use space::mask::Mask;
+use map::Map;
 
 // Implementation notes:
 //
@@ -74,9 +76,7 @@ impl<'a> Wave<'a>
         wave
     }
 
-    fn ripple(&mut self,
-              seed: &Mask,
-              sink: Option<&Mask>)
+    fn ripple(&mut self, seed: &Mask, sink: Option<&Mask>)
     {
         debug_assert_eq!(self.space, seed.space);
         let n = self.space.len() as u16;
@@ -89,11 +89,11 @@ impl<'a> Wave<'a>
         self.stops.clear();
         if let Some(sink) = sink {
             for z in 0..self.wave.len() {
-                self.wave[z] = if seed.mask[z] {
+                self.wave[z] = if *seed.at(z) {
                     self.zs[s] = z as u16;
                     s += 1;
                     1
-                } else if sink.mask[z] {
+                } else if *sink.at(z) {
                     255
                 } else {
                     0
@@ -101,7 +101,7 @@ impl<'a> Wave<'a>
             }
         } else {
             for z in 0..self.wave.len() {
-                self.wave[z] = if seed.mask[z] {
+                self.wave[z] = if *seed.at(z) {
                     self.zs[s] = z as u16;
                     s += 1;
                     1
