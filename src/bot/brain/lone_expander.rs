@@ -110,12 +110,12 @@ impl LoneBrain
                 let d = f.l1_norm(&g);
                 let df = self.discount_factor.powi(d as i32);
                 df_mass += df;
-                let o = g.on(occupations);
+                let o = g.ref_on(occupations);
                 if o.tag == who {
                     pop_mass += df * o.strength as f32 / 255.0;
                 }
             }
-            *f.on_mut(&mut densities) = pop_mass / df_mass;
+            *f.mut_on(&mut densities) = pop_mass / df_mass;
         }
         densities
     }
@@ -133,9 +133,9 @@ impl LoneBrain
         for f in space.points() {
             let mass = space.points()
                             .map(|g| {
-                                let o = g.on(occupations);
+                                let o = g.ref_on(occupations);
                                 if o.tag != who {
-                                    *g.on(productions) as f32 *
+                                    *g.ref_on(productions) as f32 *
                                     (f.l1_norm(&g) as f32 * ln_df).exp() *
                                     perpetuity(discount_factor)
                                 } else {
@@ -143,7 +143,7 @@ impl LoneBrain
                                 }
                             })
                             .sum();
-            *f.on_mut(&mut ownerships) = mass;
+            *f.mut_on(&mut ownerships) = mass;
         }
         ownerships
     }
@@ -160,7 +160,7 @@ impl LoneBrain
         for f in space.points() {
             let mass = space.points()
                             .map(|g| {
-                                let o = g.on(occupations);
+                                let o = g.ref_on(occupations);
                                 if o.tag != who && o.tag != 0 {
                                     (f.l1_norm(&g) as f32 * ln_df).exp()
                                 } else {
@@ -168,7 +168,7 @@ impl LoneBrain
                                 }
                             })
                             .sum();
-            *f.on_mut(&mut blood) = mass;
+            *f.mut_on(&mut blood) = mass;
         }
         blood
     }
@@ -184,12 +184,12 @@ impl LoneBrain
     {
         let productions = &self.environment.production_map;
         let occupations = &state.occupation_map;
-        let o_src = loc.on(occupations);
-        let d_src = *loc.on(densities);
-        let e_src = *loc.on(ownerships);
-        let b_src = *loc.on(blood);
+        let o_src = loc.ref_on(occupations);
+        let d_src = *loc.ref_on(densities);
+        let e_src = *loc.ref_on(ownerships);
+        let b_src = *loc.ref_on(blood);
         let str_src = o_src.strength as f32;
-        let prod_src = *loc.on(productions) as f32;
+        let prod_src = *loc.ref_on(productions) as f32;
         let mut utilities = Vec::with_capacity(5);
         assert!(d_src.is_finite());
         // Utility for staying put
@@ -201,10 +201,10 @@ impl LoneBrain
         // Utilities for moving
         for d in Dir::dirs() {
             let p = loc.adjacent_in(d);
-            let o_tgt = p.on(occupations);
-            let d_tgt = *p.on(densities);
-            let e_tgt = *p.on(ownerships);
-            let b_tgt = *p.on(blood);
+            let o_tgt = p.ref_on(occupations);
+            let d_tgt = *p.ref_on(densities);
+            let e_tgt = *p.ref_on(ownerships);
+            let b_tgt = *p.ref_on(blood);
             let str_tgt = o_tgt.strength as f32;
             let density_value = -self.density_weight *
                                 (d_tgt.powi(4) - d_src.powi(4));
@@ -219,7 +219,7 @@ impl LoneBrain
                 }
             } else {
                 if o_tgt.strength < o_src.strength {
-                    let acquisition_value = *p.on(productions) as f32 *
+                    let acquisition_value = *p.ref_on(productions) as f32 *
                                             self.discount_factor *
                                             perpetuity(self.discount_factor);
                     let acquisition_cost =
@@ -267,7 +267,7 @@ impl Brain for LoneBrain
         for f in self.environment
                      .space
                      .points() {
-            let source = f.on(&state.occupation_map);
+            let source = f.ref_on(&state.occupation_map);
             if source.tag == self.me() {
                 actions.push(self.select_cell_action(self.me(),
                                                      f,

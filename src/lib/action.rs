@@ -22,34 +22,56 @@ pub type Action = (Coord, Option<Dir>);
 
 pub struct Choice<T>
 {
-    still: Option<T>,
-    north: Option<T>,
-    east: Option<T>,
-    south: Option<T>,
-    west: Option<T>,
+    still: T,
+    north: T,
+    east: T,
+    south: T,
+    west: T,
 }
 
 impl<T> Choice<T>
 {
-    pub fn new() -> Self
+    pub fn with_init(init: T) -> Self
+        where T: Clone
     {
         Choice {
-            still: None,
-            north: None,
-            east: None,
-            south: None,
-            west: None,
+            still: init.clone(),
+            north: init.clone(),
+            east: init.clone(),
+            south: init.clone(),
+            west: init,
         }
     }
 
-    pub fn get(&self, key: &Option<Dir>) -> Option<&T>
+    pub fn reset(&mut self, value: T)
+        where T: Clone
+    {
+        self.still = value.clone();
+        self.north = value.clone();
+        self.east = value.clone();
+        self.south = value.clone();
+        self.west = value;
+    }
+
+    pub fn get(&self, key: &Option<Dir>) -> &T
     {
         match *key {
-            None => self.still.as_ref(),
-            Some(Dir::North) => self.north.as_ref(),
-            Some(Dir::East) => self.east.as_ref(),
-            Some(Dir::South) => self.south.as_ref(),
-            Some(Dir::West) => self.west.as_ref(),
+            None => &self.still,
+            Some(Dir::North) => &self.north,
+            Some(Dir::East) => &self.east,
+            Some(Dir::South) => &self.south,
+            Some(Dir::West) => &self.west,
+        }
+    }
+
+    pub fn get_mut(&mut self, key: &Option<Dir>) -> &mut T
+    {
+        match *key {
+            None => &mut self.still,
+            Some(Dir::North) => &mut self.north,
+            Some(Dir::East) => &mut self.east,
+            Some(Dir::South) => &mut self.south,
+            Some(Dir::West) => &mut self.west,
         }
     }
 
@@ -74,19 +96,19 @@ impl<T> Choice<T>
     {
         let mut action = None;
         let mut max = &self.still;
-        if Choice::gt(&self.north, max) {
+        if &self.north > max {
             action = Some(Dir::North);
             max = &self.north;
         }
-        if Choice::gt(&self.east, max) {
+        if &self.east > max {
             action = Some(Dir::East);
             max = &self.east;
         }
-        if Choice::gt(&self.south, max) {
+        if &self.south > max {
             action = Some(Dir::South);
             max = &self.south;
         }
-        if Choice::gt(&self.west, max) {
+        if &self.west > max {
             action = Some(Dir::West);
         }
         action

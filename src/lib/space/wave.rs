@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use map::Map;
+use map::{Map, RefMap};
 use space::Space;
+use space::frame::Frame;
 use space::mask::Mask;
-use space::point::Point;
 
 // Implementation notes:
 //
@@ -89,11 +89,11 @@ impl<'a> Wave<'a>
         if let Some(sink) = sink {
             debug_assert_eq!(self.space, sink.space);
             for ix in 0..self.wave.len() {
-                self.wave[ix] = if *source.at(ix) {
+                self.wave[ix] = if *source.ref_at(ix) {
                     self.ixs[s] = ix as u16;
                     s += 1;
                     1
-                } else if *sink.at(ix) {
+                } else if *sink.ref_at(ix) {
                     255
                 } else {
                     0
@@ -101,7 +101,7 @@ impl<'a> Wave<'a>
             }
         } else {
             for ix in 0..self.wave.len() {
-                self.wave[ix] = if *source.at(ix) {
+                self.wave[ix] = if *source.ref_at(ix) {
                     self.ixs[s] = ix as u16;
                     s += 1;
                     1
@@ -194,6 +194,65 @@ impl<'a> Wave<'a>
     }
 }
 
+pub struct Flux<'a>
+{
+    wave: &'a Wave<'a>,
+    ix: u16,
+}
+
+impl<'a, 'b> Map<'a, Flux<'b>> for Wave<'b>
+    where 'a: 'b
+{
+    #[inline]
+    fn at(&'a self, ix: usize) -> Flux<'b>
+    {
+        Flux {
+            wave: &self,
+            ix: ix as u16,
+        }
+    }
+}
+
+impl<'a> Frame for Flux<'a>
+{
+    #[inline]
+    fn space(&self) -> &Space
+    {
+        self.wave.space
+    }
+
+    #[inline]
+    fn ix(&self) -> usize
+    {
+        self.ix as usize
+    }
+}
+
+impl<'a> Flux<'a>
+{
+    // Returns the fluxes that flow into this one
+    fn sources(&self)
+    {
+        let w = self.space().width();
+        let h = self.space().height();
+    }
+
+    // Returns the fluxes that this one could flow into
+    fn sinks(&self)
+    {
+        unimplemented!();
+    }
+}
+
+struct Sources<'a>
+{
+
+}
+
+struct Sinks<'a>
+{
+}
+
 pub struct Front<'a>
 {
     wave: &'a Wave<'a>,
@@ -203,16 +262,18 @@ pub struct Front<'a>
 
 impl<'a> Iterator for Front<'a>
 {
-    type Item = Point<'a>;
+    type Item = Flux<'a>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item>
     {
         if self.start < self.stop {
-            let ix = Point::new(self.wave.space,
-                                self.wave.ixs[self.start] as usize);
+            let flux = Flux {
+                wave: self.wave,
+                ix: self.wave.ixs[self.start],
+            };
             self.start += 1;
-            Some(ix)
+            Some(flux)
         } else {
             None
         }
@@ -241,7 +302,7 @@ mod test {
             0, 0, 0, 0, 0, 0,
         ];
         let seed = Mask::create(&space, |f: &Point| {
-            *f.on(&map) == 1
+            *f.ref_on(&map) == 1
         });
         let mut wave = Wave::new(&space);
         wave.ripple(&seed, None);
@@ -268,7 +329,7 @@ mod test {
             1, 0, 0, 0, 0, 0,
         ];
         let seed = Mask::create(&space, |f: &Point| {
-            *f.on(&map) == 1
+            *f.ref_on(&map) == 1
         });
         let mut wave = Wave::new(&space);
         wave.ripple(&seed, None);

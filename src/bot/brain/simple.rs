@@ -54,7 +54,7 @@ fn tick_site(origin: &Point,
 {
     for d in Dir::dirs() {
         let f = origin.adjacent_in(d);
-        let tgt = f.on(occupations);
+        let tgt = f.ref_on(occupations);
         if tgt.tag != me && tgt.strength < src.strength {
             return Some(*d);
         }

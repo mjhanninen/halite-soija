@@ -16,8 +16,9 @@
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
 use coord::Coord;
-use map::Map;
+use map::{Map, MutMap, RefMap};
 use space::Space;
+use space::point::Point;
 
 pub trait Frame
 {
@@ -26,17 +27,24 @@ pub trait Frame
     fn ix(&self) -> usize;
 
     #[inline]
-    fn on<'b, T, M>(&self, map: &'b M) -> &'b T
-        where M: Map<T>
+    fn on<'a, M, T>(&self, map: &'a M) -> T
+        where M: Map<'a, T>
     {
         map.at(self.ix())
     }
 
     #[inline]
-    fn on_mut<'b, T, M>(&self, map: &'b mut M) -> &'b mut T
-        where M: Map<T>
+    fn ref_on<'a, T, M>(&self, map: &'a M) -> &'a T
+        where M: RefMap<T>
     {
-        map.at_mut(self.ix())
+        map.ref_at(self.ix())
+    }
+
+    #[inline]
+    fn mut_on<'a, T, M>(&self, map: &'a mut M) -> &'a mut T
+        where M: MutMap<T>
+    {
+        map.mut_at(self.ix())
     }
 
     #[inline]
@@ -50,5 +58,13 @@ pub trait Frame
     {
         debug_assert!(self.space() == other.space());
         self.space().l1_norm(self.ix(), other.ix())
+    }
+
+    // NB: An implementation of Into<Point<'a>> for &'a Frame turned out to be
+    // an ownership hell. Gave up.
+    #[inline]
+    fn to_point<'a>(&'a self) -> Point<'a>
+    {
+        self.space().point(self.ix())
     }
 }

@@ -124,6 +124,17 @@ impl<'a> Iterator for Points<'a>
 
 impl Space
 {
+    #[inline]
+    pub fn point<'a>(&'a self, ix: usize) -> Point<'a>
+    {
+        debug_assert!((self.sz as usize) < ix);
+        Point {
+            space: self,
+            ix: ix as u16,
+        }
+    }
+
+    #[inline]
     pub fn points<'a>(&'a self) -> Points<'a>
     {
         Points {

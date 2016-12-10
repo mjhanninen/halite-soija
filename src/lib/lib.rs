@@ -28,7 +28,7 @@ pub mod world;
 pub use action::{Action, Choice};
 pub use coord::Coord;
 pub use dir::Dir;
-pub use map::Map;
+pub use map::{Map, MutMap, RefMap};
 pub use math::Economic;
 pub use space::frame::Frame;
 pub use space::mask::Mask;

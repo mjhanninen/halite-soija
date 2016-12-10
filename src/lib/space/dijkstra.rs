@@ -24,25 +24,26 @@ use space::frame::Frame;
 use space::point::Point;
 
 /// Uniform-cost scan over the space.
-pub struct DijsktraScan<'a, F>
+pub struct DijsktraScan<'a, C>
 {
-    cost_fn: F,
+    cost_fn: C,
     visited: Vec<bool>,
     queue: BinaryHeap<(i16, Point<'a>)>,
 }
 
-impl<'a> Point<'a>
+impl<'a, C> DijsktraScan<'a, C>
 {
-    pub fn dijkstra_scan<F>(&self, cost_fn: F) -> DijsktraScan<F>
-        where F: Fn(&Point) -> Option<i16>
+    pub fn new(pnt: Point<'a>, cost_fn: C) -> Self
+        where C: Fn(&Point) -> Option<i16>
     {
-        let mut queue = BinaryHeap::with_capacity(self.space().len() * 2);
-        if let Some(init_cost) = cost_fn(&self) {
-            queue.push((-init_cost, self.clone()));
+        let s = pnt.space().len();
+        let mut queue = BinaryHeap::with_capacity(2 * s);
+        if let Some(init_cost) = cost_fn(&pnt) {
+            queue.push((-init_cost, pnt));
         }
         DijsktraScan {
             cost_fn: cost_fn,
-            visited: vec![false; self.space().len()],
+            visited: vec![false; s],
             // The upper bound of the priority queue is 2 * width * height;
             // think of the general case to add three new cell to the search
             // queue you have to consume one cell from the existing queue.
@@ -53,8 +54,17 @@ impl<'a> Point<'a>
     }
 }
 
-impl<'a, F> Iterator for DijsktraScan<'a, F>
-    where F: Fn(&Point) -> Option<i16>
+impl<'a> Point<'a>
+{
+    pub fn dijkstra_scan<C>(&self, cost_fn: C) -> DijsktraScan<'a, C>
+        where C: Fn(&Point) -> Option<i16>
+    {
+        DijsktraScan::new(self.clone(), cost_fn)
+    }
+}
+
+impl<'a, C> Iterator for DijsktraScan<'a, C>
+    where C: Fn(&Point) -> Option<i16>
 {
     type Item = (i16, Point<'a>);
 
@@ -64,7 +74,7 @@ impl<'a, F> Iterator for DijsktraScan<'a, F>
         // the cost to get the minimum cost ordering.
         while let Some((neg_cost, frame)) = self.queue.pop() {
             let unvisited = {
-                let mut visited = frame.on_mut(&mut self.visited);
+                let mut visited = frame.mut_on(&mut self.visited);
                 if *visited {
                     false
                 } else {
@@ -75,7 +85,7 @@ impl<'a, F> Iterator for DijsktraScan<'a, F>
             if unvisited {
                 for dir in Dir::dirs() {
                     let adj_frame = frame.adjacent_in(dir);
-                    if !*adj_frame.on(&self.visited) {
+                    if !*adj_frame.ref_on(&self.visited) {
                         if let Some(step_cost) = (self.cost_fn)(&adj_frame) {
                             self.queue.push((neg_cost - step_cost, adj_frame))
                         }

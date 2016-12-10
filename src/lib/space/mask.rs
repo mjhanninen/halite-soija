@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use map::Map;
+use map::{MutMap, RefMap};
 use space::Space;
 use space::frame::Frame;
 use space::point::Point;
@@ -27,16 +27,19 @@ pub struct Mask<'a>
     mask: Vec<bool>,
 }
 
-impl<'a> Map<bool> for Mask<'a>
+impl<'a> RefMap<bool> for Mask<'a>
 {
     #[inline]
-    fn at(&self, ix: usize) -> &bool
+    fn ref_at(&self, ix: usize) -> &bool
     {
         &self.mask[ix]
     }
+}
 
+impl<'a> MutMap<bool> for Mask<'a>
+{
     #[inline]
-    fn at_mut(&mut self, ix: usize) -> &mut bool
+    fn mut_at(&mut self, ix: usize) -> &mut bool
     {
         &mut self.mask[ix]
     }

@@ -15,22 +15,46 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-pub trait Map<T>
+use space::frame::Frame;
+
+pub trait Map<'a, T>
 {
-    fn at(&self, ix: usize) -> &T;
-    fn at_mut(&mut self, ix: usize) -> &mut T;
+    fn at(&'a self, ix: usize) -> T;
 }
 
-impl<T> Map<T> for Vec<T>
+pub trait RefMap<T>
+{
+    fn ref_at(&self, ix: usize) -> &T;
+}
+
+pub trait MutMap<T>
+{
+    fn mut_at(&mut self, ix: usize) -> &mut T;
+}
+
+impl<'a, T> Map<'a, T> for Vec<T>
+    where T: Clone
 {
     #[inline]
-    fn at(&self, ix: usize) -> &T
+    fn at(&'a self, ix: usize) -> T
+    {
+        self[ix].clone()
+    }
+}
+
+impl<T> RefMap<T> for Vec<T>
+{
+    #[inline]
+    fn ref_at(&self, ix: usize) -> &T
     {
         &self[ix]
     }
+}
 
+impl<T> MutMap<T> for Vec<T>
+{
     #[inline]
-    fn at_mut(&mut self, ix: usize) -> &mut T
+    fn mut_at(&mut self, ix: usize) -> &mut T
     {
         &mut self[ix]
     }
