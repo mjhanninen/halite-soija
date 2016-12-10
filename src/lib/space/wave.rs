@@ -185,7 +185,6 @@ impl<'a> Wave<'a>
             let stop = self.stops[ix];
             Some(Front {
                 wave: self,
-                zs: &self.zs,
                 start: start as usize,
                 stop: stop as usize,
             })
@@ -198,7 +197,6 @@ impl<'a> Wave<'a>
 pub struct Front<'a>
 {
     wave: &'a Wave<'a>,
-    zs: &'a [u16],
     start: usize,
     stop: usize,
 }
@@ -213,7 +211,7 @@ impl<'a> Iterator for Front<'a>
         if self.start < self.stop {
             let z = Frame {
                 space: self.wave.space,
-                origin: self.zs[self.start],
+                origin: self.wave.zs[self.start],
             };
             self.start += 1;
             Some(z)
