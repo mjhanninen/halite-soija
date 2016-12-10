@@ -17,7 +17,7 @@
 
 use std::borrow::Cow;
 
-use ua::{Action, Dir, Environment, Frame, Occupation, State};
+use ua::{Action, Dir, Environment, Frame, Occupation, Point, State};
 
 use params::Params;
 use brain::{Brain, Mold};
@@ -46,7 +46,7 @@ pub struct SimpleBrain
     environment: Environment,
 }
 
-fn tick_site(origin: &Frame,
+fn tick_site(origin: &Point,
              src: &Occupation,
              occupations: &Vec<Occupation>,
              me: u8)
@@ -75,7 +75,7 @@ impl Brain for SimpleBrain
     {
         let me = self.environment.my_tag;
         let mut actions = vec![];
-        for f in self.environment.space.frames() {
+        for f in self.environment.space.points() {
             let source = &state.occupation_map[f.ix()];
             if source.tag == me {
                 if let Some(dir) = tick_site(&f,

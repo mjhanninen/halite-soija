@@ -18,6 +18,7 @@
 pub mod dijkstra;
 pub mod frame;
 pub mod mask;
+pub mod point;
 pub mod wave;
 
 use coord::Coord;

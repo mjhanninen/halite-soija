@@ -18,7 +18,7 @@
 use std::borrow::Cow;
 use std::f32;
 
-use ua::{Action, Dir, Environment, Frame, Occupation, State, Tag};
+use ua::{Action, Dir, Environment, Frame, Occupation, Point, State, Tag};
 use ua::util::f32_cmp;
 
 use brain::{Brain, Mold};
@@ -103,10 +103,10 @@ impl LoneBrain
         -> Vec<f32>
     {
         let mut densities = vec![0.0; occupations.len()];
-        for f in self.environment.space.frames() {
+        for f in self.environment.space.points() {
             let mut df_mass = 0.0;
             let mut pop_mass = 0.0;
-            for g in self.environment.space.frames() {
+            for g in self.environment.space.points() {
                 let d = f.l1_norm(&g);
                 let df = self.discount_factor.powi(d as i32);
                 df_mass += df;
@@ -130,8 +130,8 @@ impl LoneBrain
         let productions = &self.environment.production_map;
         let ln_df = discount_factor.ln();
         let mut ownerships = vec![0.0; occupations.len()];
-        for f in space.frames() {
-            let mass = space.frames()
+        for f in space.points() {
+            let mass = space.points()
                             .map(|g| {
                                 let o = g.on(occupations);
                                 if o.tag != who {
@@ -157,8 +157,8 @@ impl LoneBrain
         let space = &self.environment.space;
         let ln_df = discount_factor.ln();
         let mut blood = vec![0.0; occupations.len()];
-        for f in space.frames() {
-            let mass = space.frames()
+        for f in space.points() {
+            let mass = space.points()
                             .map(|g| {
                                 let o = g.on(occupations);
                                 if o.tag != who && o.tag != 0 {
@@ -175,7 +175,7 @@ impl LoneBrain
 
     fn select_cell_action(&self,
                           who: Tag,
-                          loc: Frame,
+                          loc: Point,
                           state: &State,
                           densities: &Vec<f32>,
                           ownerships: &Vec<f32>,
@@ -266,7 +266,7 @@ impl Brain for LoneBrain
         let mut actions = vec![];
         for f in self.environment
                      .space
-                     .frames() {
+                     .points() {
             let source = f.on(&state.occupation_map);
             if source.tag == self.me() {
                 actions.push(self.select_cell_action(self.me(),

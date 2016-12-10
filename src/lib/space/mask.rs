@@ -18,6 +18,7 @@
 use map::Map;
 use space::Space;
 use space::frame::Frame;
+use space::point::Point;
 
 pub struct Mask<'a>
 {
@@ -51,7 +52,7 @@ impl<'a> Mask<'a>
         }
     }
 
-    pub fn singleton(frame: &'a Frame) -> Self
+    pub fn singleton(frame: &'a Point) -> Self
     {
         let mut mask = vec![false; frame.space().len()];
         mask[frame.ix()] = true;
@@ -62,11 +63,11 @@ impl<'a> Mask<'a>
     }
 
     pub fn create<F>(space: &'a Space, f: F) -> Self
-        where F: Fn(&Frame) -> bool
+        where F: Fn(&Point) -> bool
     {
         let mut mask = Vec::with_capacity(space.len());
         for ix in 0..space.len() {
-            mask.push(f(&Frame::new(space, ix)));
+            mask.push(f(&Point::new(space, ix)));
         }
         Mask {
             space: space,

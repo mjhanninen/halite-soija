@@ -19,7 +19,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use ua::{Action, Choice, Economic, Environment, Frame, Mask, Occupation,
-         Production, State, Tag, Wave};
+         Point, Production, State, Tag, Wave};
 
 use brain::{Brain, Mold};
 use params::Params;
@@ -69,7 +69,7 @@ const PAR: Par = Par {
 /// Computes the expected "outward" or "explorative" utility for the `source`
 /// cell that belongs to the rim of foreign cells surrounding the body of the
 /// bot.
-fn compute_outward_utility(source: &Frame,
+fn compute_outward_utility(source: &Point,
                            me: &Tag,
                            productions: &Vec<Production>,
                            occupations: &Vec<Occupation>,
@@ -113,7 +113,7 @@ fn compute_rim_utility<'a>(who: &Tag,
                            occupations: &Vec<Occupation>,
                            par: &Par,
                            turns_left: i32)
-    -> Vec<(Frame<'a>, f32)>
+    -> Vec<(Point<'a>, f32)>
 {
     debug_assert!(turns_left >= 0);
     // XXX: Here we need only the first wavefront. The wave function should be
@@ -137,16 +137,16 @@ fn compute_rim_utility<'a>(who: &Tag,
     }
 }
 
-fn compute_action_utilities<'a>(choices: &mut BTreeMap<Frame<'a>, Choice<f32>>,
+fn compute_action_utilities<'a>(choices: &mut BTreeMap<Point<'a>, Choice<f32>>,
                                 who: &Tag,
                                 body: &'a Mask,
                                 productions: &Vec<Production>,
                                 occupations: &Vec<Occupation>,
-                                rim_utilities: &Vec<(Frame<'a>, f32)>,
+                                rim_utilities: &Vec<(Point<'a>, f32)>,
                                 par: &Par)
 {
     let sink = body;
-    let mut zs: Vec<Frame<'a>> = Vec::new();
+    let mut zs: Vec<Point<'a>> = Vec::new();
     for &(ref target, ref fwd_utility) in rim_utilities.iter() {
         debug_assert!(target.on(occupations).tag != *who);
         // Here `r` is the "resistance" faced when attempting to occupy the
@@ -191,7 +191,7 @@ fn compute_action_utilities<'a>(choices: &mut BTreeMap<Frame<'a>, Choice<f32>>,
     }
 }
 
-fn select_actions<'a>(utilities: &mut BTreeMap<Frame<'a>, Choice<f32>>)
+fn select_actions<'a>(utilities: &mut BTreeMap<Point<'a>, Choice<f32>>)
     -> Vec<Action>
 {
     // As a first stab at the action selection we just select the action that
@@ -215,7 +215,7 @@ impl Brain for TeddyBrain
         debug_assert!(state.turn <= self.environment.total_turns);
         let turns_left = (self.environment.total_turns - state.turn) as i32;
         let me = self.environment.my_tag;
-        let my_body = Mask::create(&self.environment.space, |z: &Frame| {
+        let my_body = Mask::create(&self.environment.space, |z: &Point| {
             z.on(&state.occupation_map).tag == me
         });
         let rim_utilities = compute_rim_utility(&me,

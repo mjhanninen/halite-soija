@@ -21,19 +21,20 @@ use std::collections::BinaryHeap;
 
 use dir::Dir;
 use space::frame::Frame;
+use space::point::Point;
 
 /// Uniform-cost scan over the space.
 pub struct DijsktraScan<'a, F>
 {
     cost_fn: F,
     visited: Vec<bool>,
-    queue: BinaryHeap<(i16, Frame<'a>)>,
+    queue: BinaryHeap<(i16, Point<'a>)>,
 }
 
-impl<'a> Frame<'a>
+impl<'a> Point<'a>
 {
     pub fn dijkstra_scan<F>(&self, cost_fn: F) -> DijsktraScan<F>
-        where F: Fn(&Frame) -> Option<i16>
+        where F: Fn(&Point) -> Option<i16>
     {
         let mut queue = BinaryHeap::with_capacity(self.space().len() * 2);
         if let Some(init_cost) = cost_fn(&self) {
@@ -53,9 +54,9 @@ impl<'a> Frame<'a>
 }
 
 impl<'a, F> Iterator for DijsktraScan<'a, F>
-    where F: Fn(&Frame) -> Option<i16>
+    where F: Fn(&Point) -> Option<i16>
 {
-    type Item = (i16, Frame<'a>);
+    type Item = (i16, Point<'a>);
 
     fn next(&mut self) -> Option<Self::Item>
     {

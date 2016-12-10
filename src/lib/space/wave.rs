@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU General Public License along
 // with Umpteenth Anion.  If not, see <http://www.gnu.org/licenses/>.
 
-use space::Space;
-use space::frame::Frame;
-use space::mask::Mask;
 use map::Map;
+use space::Space;
+use space::mask::Mask;
+use space::point::Point;
 
 // Implementation notes:
 //
@@ -203,13 +203,13 @@ pub struct Front<'a>
 
 impl<'a> Iterator for Front<'a>
 {
-    type Item = Frame<'a>;
+    type Item = Point<'a>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item>
     {
         if self.start < self.stop {
-            let ix = Frame::new(self.wave.space,
+            let ix = Point::new(self.wave.space,
                                 self.wave.ixs[self.start] as usize);
             self.start += 1;
             Some(ix)
@@ -225,6 +225,8 @@ mod test {
     use space::Space;
     use space::frame::Frame;
     use space::mask::Mask;
+    use space::point::Point;
+
     use super::*;
 
     #[test]
@@ -238,7 +240,7 @@ mod test {
             0, 1, 1, 1, 0, 0,
             0, 0, 0, 0, 0, 0,
         ];
-        let seed = Mask::create(&space, |f: &Frame| {
+        let seed = Mask::create(&space, |f: &Point| {
             *f.on(&map) == 1
         });
         let mut wave = Wave::new(&space);
@@ -265,7 +267,7 @@ mod test {
             0, 0, 0, 0, 0, 1,
             1, 0, 0, 0, 0, 0,
         ];
-        let seed = Mask::create(&space, |f: &Frame| {
+        let seed = Mask::create(&space, |f: &Point| {
             *f.on(&map) == 1
         });
         let mut wave = Wave::new(&space);
