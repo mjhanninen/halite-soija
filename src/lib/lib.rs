@@ -21,7 +21,6 @@ pub mod dir;
 pub mod io;
 pub mod map;
 pub mod math;
-pub mod onion;
 pub mod space;
 pub mod util;
 pub mod world;
